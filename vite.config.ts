@@ -22,3 +22,7 @@ export default defineConfig(({mode}) => {
     },
   };
 });
+export default defineConfig({
+  base: '/Solo-Leveling/', // Replace 'repo-name' with your actual repository name
+  plugins: [react()],
+});
