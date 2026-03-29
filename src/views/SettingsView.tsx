@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { cn } from '../lib/utils';
-import { Settings, User, Palette, Activity, Save, Upload, Download, Database, Trash2, Moon, Sun } from 'lucide-react';
+import { Settings, User, Palette, Activity, Save, Upload, Download, Database, Trash2, Moon, Sun, AlertTriangle } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 const THEMES = [
@@ -22,6 +22,8 @@ export function SettingsView() {
   const [height, setHeight] = useState('');
   const [age, setAge] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
+  const [fitnessGoal, setFitnessGoal] = useState<'lose' | 'maintain' | 'build'>('maintain');
+  const [activityLevel, setActivityLevel] = useState<'sedentary' | 'light' | 'moderate' | 'active' | 'very_active'>('sedentary');
   const [themeColor, setThemeColor] = useState('#00F0FF');
   const [avatar, setAvatar] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -32,6 +34,8 @@ export function SettingsView() {
       setHeight(userStats.height?.toString() || '');
       setAge(userStats.age?.toString() || '');
       setGender(userStats.gender || 'male');
+      setFitnessGoal(userStats.fitnessGoal || 'maintain');
+      setActivityLevel(userStats.activityLevel || 'sedentary');
       setThemeColor(userStats.themeColor || '#00F0FF');
       setAvatar(userStats.avatar || '');
     }
@@ -55,6 +59,8 @@ export function SettingsView() {
       height: height ? parseFloat(height) : undefined,
       age: age ? parseInt(age) : undefined,
       gender,
+      fitnessGoal,
+      activityLevel,
       themeColor,
       avatar
     });
@@ -92,6 +98,9 @@ export function SettingsView() {
     }
   };
 
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetText, setResetText] = useState('');
+
   const handleExport = async () => {
     const data = {
       userStats: await db.userStats.toArray(),
@@ -115,11 +124,9 @@ export function SettingsView() {
   };
 
   const handleReset = async () => {
-    if (window.confirm('WARNING: This will permanently delete all your data and reset the application to its factory state. Are you absolutely sure?')) {
-      if (window.confirm('FINAL WARNING: This action cannot be undone. Type "RESET" to confirm.')) {
-        await db.delete();
-        window.location.reload();
-      }
+    if (resetText === 'RESET') {
+      await db.delete();
+      window.location.reload();
     }
   };
 
@@ -215,6 +222,32 @@ export function SettingsView() {
                 <option value="other">Other</option>
               </select>
             </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-mono text-[#A3A3A3] mb-1">FITNESS GOAL</label>
+              <select 
+                value={fitnessGoal}
+                onChange={(e) => setFitnessGoal(e.target.value as any)}
+                className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none"
+              >
+                <option value="lose">Lose Weight / Cut</option>
+                <option value="maintain">Maintain Weight / Recomp</option>
+                <option value="build">Build Muscle / Bulk</option>
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-mono text-[#A3A3A3] mb-1">ACTIVITY LEVEL</label>
+              <select 
+                value={activityLevel}
+                onChange={(e) => setActivityLevel(e.target.value as any)}
+                className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none"
+              >
+                <option value="sedentary">Sedentary (Little to no exercise)</option>
+                <option value="light">Lightly Active (Light exercise 1-3 days/week)</option>
+                <option value="moderate">Moderately Active (Moderate exercise 3-5 days/week)</option>
+                <option value="active">Active (Hard exercise 6-7 days/week)</option>
+                <option value="very_active">Very Active (Very hard exercise/physical job)</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -282,7 +315,7 @@ export function SettingsView() {
           </div>
           <div className="pt-4 border-t border-[#262626]">
             <button 
-              onClick={handleReset}
+              onClick={() => setShowResetConfirm(true)}
               className="w-full bg-red-950/30 border border-red-900/50 hover:bg-red-900/50 text-red-400 px-4 py-3 rounded-md font-mono text-sm transition-colors flex items-center justify-center"
             >
               <Trash2 className="w-4 h-4 mr-2" /> FACTORY RESET (WIPE ALL DATA)
@@ -301,6 +334,56 @@ export function SettingsView() {
           {isSaving ? 'CONFIG SAVED' : 'SAVE CONFIGURATION'}
         </button>
       </div>
+
+      {/* Reset Confirmation Modal */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#141414] border border-red-900/50 rounded-xl max-w-md w-full p-6 shadow-2xl">
+            <h3 className="text-xl font-mono text-red-500 font-bold mb-4 flex items-center">
+              <AlertTriangle className="w-6 h-6 mr-2" />
+              CRITICAL WARNING
+            </h3>
+            <p className="text-[#A3A3A3] text-sm font-mono mb-6">
+              This action will permanently delete all your data, including quests, inventory, logs, and settings. This cannot be undone.
+            </p>
+            <div className="mb-6">
+              <label className="block text-xs font-mono text-[#A3A3A3] mb-2">
+                Type <span className="text-white font-bold">RESET</span> to confirm:
+              </label>
+              <input 
+                type="text" 
+                value={resetText}
+                onChange={(e) => setResetText(e.target.value)}
+                className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-3 text-white font-mono text-center focus:outline-none focus:border-red-500"
+                placeholder="RESET"
+              />
+            </div>
+            <div className="flex space-x-4">
+              <button 
+                onClick={() => {
+                  setShowResetConfirm(false);
+                  setResetText('');
+                }}
+                className="flex-1 bg-[#262626] hover:bg-[#333] text-white px-4 py-3 rounded-md font-mono text-sm transition-colors"
+              >
+                CANCEL
+              </button>
+              <button 
+                onClick={handleReset}
+                disabled={resetText !== 'RESET'}
+                className={cn(
+                  "flex-1 px-4 py-3 rounded-md font-mono text-sm transition-colors",
+                  resetText === 'RESET' 
+                    ? "bg-red-600 hover:bg-red-700 text-white" 
+                    : "bg-red-950/30 text-red-900 cursor-not-allowed"
+                )}
+              >
+                CONFIRM WIPE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -18,6 +18,8 @@ import { NutritionView } from './views/NutritionView';
 import { useStore } from './store/useStore';
 import { useSystemEngine } from './db/engine';
 
+import { Toaster } from 'sonner';
+
 export default function App() {
   // Initialize background engine
   useSystemEngine();
@@ -35,6 +37,7 @@ export default function App() {
 
   return (
     <Layout>
+      <Toaster theme="dark" position="top-center" />
       {currentView === 'status' && <StatusView />}
       {currentView === 'quests' && <QuestView />}
       {currentView === 'scheduler' && <SchedulerView />}

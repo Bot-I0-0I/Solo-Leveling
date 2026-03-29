@@ -35,7 +35,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     )}>
       {/* Sidebar / Bottom Bar */}
       <nav className={cn(
-        "fixed bottom-0 left-0 right-0 md:relative md:w-64 border-t md:border-t-0 md:border-r border-[#262626] bg-[#0A0A0A]/90 backdrop-blur-md z-50 flex md:flex-col justify-around md:justify-start p-4 overflow-y-auto",
+        "fixed bottom-0 left-0 right-0 md:relative md:w-64 border-t md:border-t-0 md:border-r border-[#262626] bg-[#0A0A0A]/90 backdrop-blur-md z-50 flex md:flex-col justify-start p-2 md:p-4 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto overflow-y-hidden hide-scrollbar md:custom-scrollbar space-x-2 md:space-x-0 md:space-y-2",
         isPenalty && "border-red-900/50 bg-[#1A0505]/90"
       )}>
         <div className="hidden md:flex flex-col mb-8 px-4">
@@ -68,17 +68,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
             key={item.id}
             onClick={() => setView(item.id)}
             className={cn(
-              "flex flex-col md:flex-row items-center md:space-x-3 p-3 rounded-lg transition-all duration-200 relative",
+              "flex flex-col md:flex-row items-center justify-center md:justify-start md:space-x-3 p-3 rounded-lg transition-all duration-200 relative min-w-[72px] md:min-w-0 flex-shrink-0",
               currentView === item.id 
                 ? (isPenalty ? "bg-red-900/20 text-red-400" : "bg-[#262626]")
                 : "text-[#A3A3A3] hover:bg-[#1A1A1A] hover:text-white"
             )}
             style={currentView === item.id && !isPenalty ? { color: themeColor } : {}}
           >
-            <item.icon className="w-5 h-5" />
-            <span className="text-xs md:text-sm font-medium hidden md:block">{item.label}</span>
+            <item.icon className="w-5 h-5 md:w-5 md:h-5 mb-1 md:mb-0" />
+            <span className="text-[10px] md:text-sm font-medium block md:hidden">{item.label.split(' ')[0]}</span>
+            <span className="text-[10px] md:text-sm font-medium hidden md:block">{item.label}</span>
             {item.id === 'reviews' && pendingReviews.length > 0 && (
-              <span className="absolute top-2 right-2 md:top-3 md:right-3 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+              <span className="absolute top-1 right-1 md:top-3 md:right-3 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
             )}
           </button>
         ))}
@@ -96,7 +97,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className={cn(
-        "flex-1 p-4 md:p-8 pb-24 md:pb-8 overflow-y-auto relative",
+        "flex-1 p-4 md:p-8 pb-24 md:pb-8 overflow-y-auto custom-scrollbar relative",
         isCloaked && "blur-sm transition-all duration-300 hover:blur-none"
       )}>
         {/* Mobile Header */}

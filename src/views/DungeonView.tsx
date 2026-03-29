@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/db';
+import { db, addXp } from '../db/db';
 import { cn } from '../lib/utils';
 import { Play, Square, Plus, ShieldAlert, Trash2 } from 'lucide-react';
 
@@ -8,6 +8,8 @@ export function DungeonView() {
   const dungeons = useLiveQuery(() => db.dungeons.toArray());
   const [newTitle, setNewTitle] = useState('');
   const [newHealth, setNewHealth] = useState(100);
+  const [newRewardCredits, setNewRewardCredits] = useState(500);
+  const [newRewardXp, setNewRewardXp] = useState(500);
   const [activeDungeonId, setActiveDungeonId] = useState<number | null>(null);
   const [customDamage, setCustomDamage] = useState('');
 
@@ -20,26 +22,60 @@ export function DungeonView() {
       totalHealth: newHealth,
       currentHealth: newHealth,
       status: 'active',
-      shadowExtracted: false
+      shadowExtracted: false,
+      rewardCredits: newRewardCredits,
+      rewardXp: newRewardXp
     });
     setNewTitle('');
     setNewHealth(100);
+    setNewRewardCredits(500);
+    setNewRewardXp(500);
   };
 
   const handleDamage = async (id: number, current: number, amount: number) => {
     if (amount <= 0) return;
     const newHealth = Math.max(0, current - amount);
+    const isCleared = newHealth === 0;
+    
     await db.dungeons.update(id, { 
       currentHealth: newHealth,
-      status: newHealth === 0 ? 'cleared' : 'active'
+      status: isCleared ? 'cleared' : 'active'
     });
+    
+    if (isCleared) {
+      const dungeon = await db.dungeons.get(id);
+      if (dungeon) {
+        const creditsReward = dungeon.rewardCredits ?? 500;
+        const xpReward = dungeon.rewardXp ?? 500;
+
+        // Log income to ledger
+        if (creditsReward > 0) {
+          await db.ledger.add({
+            date: new Date().toISOString().split('T')[0],
+            amount: creditsReward,
+            type: 'income',
+            description: `Instance Cleared: ${dungeon.title}`
+          });
+        }
+        
+        // Add credits to user
+        const userStats = await db.userStats.get(1);
+        if (userStats) {
+          await db.userStats.update(1, { credits: userStats.credits + creditsReward });
+        }
+
+        // Add XP
+        if (xpReward > 0) {
+          await addXp(xpReward);
+        }
+      }
+    }
+    
     setCustomDamage('');
   };
 
   const handleDeleteDungeon = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this instance?')) {
-      await db.dungeons.delete(id);
-    }
+    await db.dungeons.delete(id);
   };
 
   if (!dungeons) return <div>Loading Instances...</div>;
@@ -139,7 +175,11 @@ export function DungeonView() {
                 <div className="flex justify-between items-start mb-6">
                   <div>
                     <h4 className="text-xl font-mono font-bold text-white uppercase">{dungeon.title}</h4>
-                    <span className="text-xs text-red-400 font-mono">BOSS ENTITY</span>
+                    <div className="flex gap-3 mt-1">
+                      <span className="text-xs text-red-400 font-mono">BOSS ENTITY</span>
+                      <span className="text-xs text-[#00F0FF] font-mono">+{dungeon.rewardXp ?? 500} XP</span>
+                      <span className="text-xs text-[#FFD700] font-mono">+{dungeon.rewardCredits ?? 500} CR</span>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <button 
@@ -183,7 +223,13 @@ export function DungeonView() {
           <div className="grid gap-4 opacity-70">
             {clearedDungeons.map(dungeon => (
               <div key={dungeon.id} className="bg-[#0A0A0A] border border-[#262626] rounded-xl p-4 flex justify-between items-center group">
-                <span className="font-mono text-sm text-[#A3A3A3] line-through">{dungeon.title}</span>
+                <div className="flex flex-col">
+                  <span className="font-mono text-sm text-[#A3A3A3] line-through">{dungeon.title}</span>
+                  <div className="flex gap-2 mt-1">
+                    <span className="text-xs text-[#00F0FF]/50 font-mono">+{dungeon.rewardXp ?? 500} XP</span>
+                    <span className="text-xs text-[#FFD700]/50 font-mono">+{dungeon.rewardCredits ?? 500} CR</span>
+                  </div>
+                </div>
                 <div className="flex items-center gap-4">
                   {!dungeon.shadowExtracted ? (
                     <button 
@@ -239,6 +285,28 @@ export function DungeonView() {
                   className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
                   min="10"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-mono text-[#A3A3A3] mb-1">REWARD (CREDITS)</label>
+                  <input 
+                    type="number" 
+                    value={newRewardCredits}
+                    onChange={(e) => setNewRewardCredits(parseInt(e.target.value) || 0)}
+                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-[#A3A3A3] mb-1">REWARD (XP)</label>
+                  <input 
+                    type="number" 
+                    value={newRewardXp}
+                    onChange={(e) => setNewRewardXp(parseInt(e.target.value) || 0)}
+                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                    min="0"
+                  />
+                </div>
               </div>
               <button type="submit" className="w-full bg-[#262626] hover:bg-[#333] text-white px-4 py-3 rounded-md font-mono text-sm transition-colors flex items-center justify-center mt-4">
                 <Plus className="w-4 h-4 mr-2" /> INITIALIZE

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp } from '../db/db';
 import { cn } from '../lib/utils';
-import { AlertTriangle, CheckCircle, Circle, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Circle, Plus, Trash2, FastForward } from 'lucide-react';
 
 export function QuestView() {
   const userStats = useLiveQuery(() => db.userStats.get(1));
@@ -12,32 +12,27 @@ export function QuestView() {
   const [newQuestTitle, setNewQuestTitle] = useState('');
   const [newQuestAttr, setNewQuestAttr] = useState<'STR' | 'VIT' | 'AGI' | 'INT' | 'SEN'>('STR');
   const [newQuestTarget, setNewQuestTarget] = useState(1);
+  const [newQuestReward, setNewQuestReward] = useState(50);
 
   const isPenalty = userStats?.penaltyActive;
 
-  const handleComplete = async (questId: number, currentVal: number, targetVal: number, attr: string, baseReward: number) => {
+  const handleComplete = async (questId: number, currentVal: number, targetVal: number, attr: string, baseReward: number, type: string, maxOut: boolean = false) => {
     if (currentVal >= targetVal) return; // Already done
 
-    const newVal = currentVal + 1;
+    const newVal = maxOut ? targetVal : currentVal + 1;
     const completed = newVal >= targetVal;
 
     await db.quests.update(questId, { currentValue: newVal, completed });
 
     if (completed) {
-      // Add XP and Credits
+      // Add XP
       if (userStats) {
         const xpGain = baseReward;
-        const creditGain = Math.floor(baseReward / 2);
-        
-        await db.userStats.update(1, {
-          credits: userStats.credits + creditGain
-        });
         
         await addXp(xpGain);
 
         // If it was a penalty quest, clear penalty state
-        const quest = await db.quests.get(questId);
-        if (quest?.type === 'penalty') {
+        if (type === 'penalty') {
           await db.userStats.update(1, { penaltyActive: false });
         }
       }
@@ -56,17 +51,16 @@ export function QuestView() {
       type: 'daily',
       completed: false,
       date: today,
-      baseReward: newQuestTarget * 10
+      baseReward: newQuestReward
     });
 
     setNewQuestTitle('');
     setNewQuestTarget(1);
+    setNewQuestReward(50);
   };
 
   const handleDeleteQuest = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this quest?')) {
-      await db.quests.delete(id);
-    }
+    await db.quests.delete(id);
   };
 
   if (!quests) return <div>Loading Quests...</div>;
@@ -103,7 +97,8 @@ export function QuestView() {
               <QuestCard 
                 key={quest.id} 
                 quest={quest} 
-                onProgress={() => handleComplete(quest.id!, quest.currentValue, quest.targetValue, quest.attribute, quest.baseReward)} 
+                onProgress={() => handleComplete(quest.id!, quest.currentValue, quest.targetValue, quest.attribute, quest.baseReward, quest.type)} 
+                onMax={() => handleComplete(quest.id!, quest.currentValue, quest.targetValue, quest.attribute, quest.baseReward, quest.type, true)}
                 onDelete={() => handleDeleteQuest(quest.id!)}
               />
             ))}
@@ -121,7 +116,8 @@ export function QuestView() {
             <QuestCard 
               key={quest.id} 
               quest={quest} 
-              onProgress={() => handleComplete(quest.id!, quest.currentValue, quest.targetValue, quest.attribute, quest.baseReward)} 
+              onProgress={() => handleComplete(quest.id!, quest.currentValue, quest.targetValue, quest.attribute, quest.baseReward, quest.type)} 
+              onMax={() => handleComplete(quest.id!, quest.currentValue, quest.targetValue, quest.attribute, quest.baseReward, quest.type, true)}
               onDelete={() => handleDeleteQuest(quest.id!)}
             />
           ))}
@@ -162,6 +158,14 @@ export function QuestView() {
               className="bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF] w-24"
               min="1"
             />
+            <input 
+              type="number" 
+              placeholder="XP" 
+              value={newQuestReward}
+              onChange={(e) => setNewQuestReward(parseInt(e.target.value) || 0)}
+              className="bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF] w-24"
+              min="0"
+            />
             <button type="submit" className="bg-[#262626] hover:bg-[#333] text-white px-4 py-2 rounded-md font-mono text-sm transition-colors flex items-center justify-center">
               <Plus className="w-4 h-4 mr-2" /> ADD
             </button>
@@ -172,7 +176,7 @@ export function QuestView() {
   );
 }
 
-const QuestCard: React.FC<{ quest: any, onProgress: () => void, onDelete?: () => void }> = ({ quest, onProgress, onDelete }) => {
+const QuestCard: React.FC<{ quest: any, onProgress: () => void, onMax: () => void, onDelete?: () => void }> = ({ quest, onProgress, onMax, onDelete }) => {
   const progress = (quest.currentValue / quest.targetValue) * 100;
   
   return (
@@ -200,6 +204,15 @@ const QuestCard: React.FC<{ quest: any, onProgress: () => void, onDelete?: () =>
               <span className="text-xs font-mono text-[#A3A3A3] bg-[#0A0A0A] px-2 py-1 rounded border border-[#262626]">
                 +{quest.baseReward} XP [{quest.attribute}]
               </span>
+              {!quest.completed && quest.targetValue > 1 && (
+                <button 
+                  onClick={onMax}
+                  className="text-[#A3A3A3] hover:text-[#00F0FF] opacity-0 group-hover:opacity-100 transition-opacity p-1 flex items-center"
+                  title="Complete All"
+                >
+                  <FastForward className="w-4 h-4" />
+                </button>
+              )}
               {onDelete && (
                 <button 
                   onClick={onDelete}

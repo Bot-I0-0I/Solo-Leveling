@@ -3,18 +3,28 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid } from 'recharts';
 import { cn } from '../lib/utils';
-import { Activity, Brain, Zap, Heart, Target, Plus, TrendingUp, AlertCircle, Edit3 } from 'lucide-react';
-import { format } from 'date-fns';
+import { Activity, Brain, Zap, Heart, Target, Plus, TrendingUp, AlertCircle, Edit3, CheckCircle, Flame, Coins, Calendar } from 'lucide-react';
+import { format, startOfWeek } from 'date-fns';
 
 export function StatusView() {
   const userStats = useLiveQuery(() => db.userStats.get(1));
   const inventory = useLiveQuery(() => db.inventory.toArray());
   const vesselLogs = useLiveQuery(() => db.vesselLogs.orderBy('date').toArray());
+  
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  
+  const todayQuests = useLiveQuery(() => db.quests.where('date').equals(today).toArray());
+  const activeDungeons = useLiveQuery(() => db.dungeons.where('status').equals('active').toArray());
+  const todayNutrition = useLiveQuery(() => db.nutritionLogs.where('date').equals(today).toArray());
+  const todayLedger = useLiveQuery(() => db.ledger.where('date').equals(today).toArray());
+  const weeklyReview = useLiveQuery(() => db.weeklyReviews.where('weekStartDate').equals(weekStart).first());
 
   const themeColor = userStats?.themeColor || '#00F0FF';
 
   const [weight, setWeight] = React.useState('');
   const [bodyFat, setBodyFat] = React.useState('');
+  const [stressLevel, setStressLevel] = React.useState('');
   const [notes, setNotes] = React.useState(userStats?.notes || '');
 
   React.useEffect(() => {
@@ -34,21 +44,24 @@ export function StatusView() {
     const today = format(new Date(), 'yyyy-MM-dd');
     const existing = await db.vesselLogs.where('date').equals(today).first();
 
+    const logData = {
+      weight: parseFloat(weight),
+      bodyFat: bodyFat ? parseFloat(bodyFat) : undefined,
+      stressLevel: stressLevel ? parseInt(stressLevel) as 1|2|3|4|5 : undefined
+    };
+
     if (existing) {
-      await db.vesselLogs.update(existing.id!, {
-        weight: parseFloat(weight),
-        bodyFat: bodyFat ? parseFloat(bodyFat) : undefined
-      });
+      await db.vesselLogs.update(existing.id!, logData);
     } else {
       await db.vesselLogs.add({
         date: today,
-        weight: parseFloat(weight),
-        bodyFat: bodyFat ? parseFloat(bodyFat) : undefined
+        ...logData
       });
     }
 
     setWeight('');
     setBodyFat('');
+    setStressLevel('');
   };
 
   if (!userStats) return <div className="animate-pulse">Loading System Data...</div>;
@@ -103,6 +116,19 @@ export function StatusView() {
     { key: 'SEN', label: 'Sense', value: totalSEN, icon: Target, color: 'text-purple-400' },
   ];
 
+  // Overview calculations
+  const completedQuests = todayQuests?.filter(q => q.completed).length || 0;
+  const totalQuests = todayQuests?.length || 0;
+  const activeDungeonCount = activeDungeons?.length || 0;
+  
+  const consumedCals = todayNutrition?.filter(n => n.type === 'food').reduce((sum, n) => sum + n.calories, 0) || 0;
+  const burnedCals = todayNutrition?.filter(n => n.type === 'exercise').reduce((sum, n) => sum + n.calories, 0) || 0;
+  const netCals = consumedCals - burnedCals;
+
+  const todayIncome = todayLedger?.filter(l => l.type === 'income').reduce((sum, l) => sum + l.amount, 0) || 0;
+  const todayExpense = todayLedger?.filter(l => l.type === 'expense').reduce((sum, l) => sum + l.amount, 0) || 0;
+  const netCredits = todayIncome - todayExpense;
+
   const latestLog = vesselLogs?.[vesselLogs.length - 1];
   const currentWeight = latestLog?.weight;
   
@@ -132,14 +158,66 @@ export function StatusView() {
     idealWeightMax = 24.9 * (heightM * heightM);
   }
 
+  // Calculate TDEE based on activity level
+  let activityMultiplier = 1.2; // sedentary
+  switch (userStats?.activityLevel) {
+    case 'light': activityMultiplier = 1.375; break;
+    case 'moderate': activityMultiplier = 1.55; break;
+    case 'active': activityMultiplier = 1.725; break;
+    case 'very_active': activityMultiplier = 1.9; break;
+  }
+  const tdee = bmr ? bmr * activityMultiplier : null;
+
   return (
-    <div className="space-y-8">
-      <header className="border-b border-[#262626] pb-6">
-        <h2 className="text-3xl font-mono font-bold tracking-tight text-white">STATUS WINDOW</h2>
-        <p className="text-[#A3A3A3] text-sm mt-1">Identity Dashboard & Attribute Matrix</p>
+    <div className="space-y-6 md:space-y-8">
+      <header className="border-b border-[#262626] pb-4 md:pb-6">
+        <h2 className="text-2xl md:text-3xl font-mono font-bold tracking-tight text-white">STATUS WINDOW</h2>
+        <p className="text-[#A3A3A3] text-xs md:text-sm mt-1">Identity Dashboard & Attribute Matrix</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* System Overview */}
+        <div className="col-span-1 md:col-span-3 bg-[#141414] border border-[#262626] rounded-xl p-6">
+          <h3 className="text-lg font-mono text-white mb-4 flex items-center">
+            <Activity className="w-5 h-5 mr-2" style={{ color: themeColor }} />
+            SYSTEM OVERVIEW
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-3">
+              <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
+                <CheckCircle className="w-3 h-3 mr-1 text-green-400" /> QUESTS
+              </div>
+              <div className="text-xl font-mono text-white">{completedQuests} / {totalQuests}</div>
+            </div>
+            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-3">
+              <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
+                <Target className="w-3 h-3 mr-1 text-red-400" /> DUNGEONS
+              </div>
+              <div className="text-xl font-mono text-white">{activeDungeonCount} <span className="text-sm text-[#A3A3A3]">ACTIVE</span></div>
+            </div>
+            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-3">
+              <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
+                <Flame className="w-3 h-3 mr-1 text-orange-400" /> CALORIES
+              </div>
+              <div className="text-xl font-mono text-white">{netCals} <span className="text-sm text-[#A3A3A3]">NET</span></div>
+            </div>
+            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-3">
+              <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
+                <Coins className="w-3 h-3 mr-1 text-yellow-400" /> CREDITS
+              </div>
+              <div className="text-xl font-mono text-white">{netCredits > 0 ? '+' : ''}{netCredits} <span className="text-sm text-[#A3A3A3]">TODAY</span></div>
+            </div>
+            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-3">
+              <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
+                <Calendar className="w-3 h-3 mr-1 text-purple-400" /> REVIEW
+              </div>
+              <div className={cn("text-sm font-mono mt-1", weeklyReview?.status === 'completed' ? "text-green-400" : "text-yellow-400")}>
+                {weeklyReview?.status === 'completed' ? 'COMPLETED' : 'PENDING'}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Level & Rank Card */}
         <div className="col-span-1 bg-[#141414] border border-[#262626] rounded-xl p-6 flex flex-col items-center justify-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00F0FF] to-transparent opacity-50"></div>
@@ -239,6 +317,7 @@ export function StatusView() {
                   />
                   <Line yAxisId="left" type="monotone" dataKey="weight" name="Weight (kg)" stroke={themeColor} strokeWidth={2} dot={{ r: 4, fill: themeColor }} activeDot={{ r: 6 }} />
                   <Line yAxisId="right" type="monotone" dataKey="bodyFat" name="Body Fat %" stroke="#FFD700" strokeWidth={2} dot={{ r: 4, fill: '#FFD700' }} />
+                  <Line yAxisId="right" type="monotone" dataKey="stressLevel" name="Stress (1-5)" stroke="#ef4444" strokeWidth={2} dot={{ r: 4, fill: '#ef4444' }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
@@ -272,6 +351,18 @@ export function StatusView() {
                   className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
                 />
               </div>
+              <div>
+                <label className="block text-xs font-mono text-[#A3A3A3] mb-1">STRESS (1-5)</label>
+                <input 
+                  type="number" 
+                  min="1"
+                  max="5"
+                  value={stressLevel}
+                  onChange={(e) => setStressLevel(e.target.value)}
+                  placeholder="1 = Low" 
+                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                />
+              </div>
               <button type="submit" className="w-full bg-[#262626] hover:bg-[#333] text-white px-4 py-3 rounded-md font-mono text-sm transition-colors flex items-center justify-center mt-2">
                 <Plus className="w-4 h-4 mr-2" /> LOG VESSEL DATA
               </button>
@@ -280,7 +371,7 @@ export function StatusView() {
         </div>
 
         {/* Growth Analysis Panel */}
-        {bmi && bmr && (
+        {bmi && bmr && tdee && (
           <div className="mt-6 pt-6 border-t border-[#262626] grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-4">
               <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
@@ -299,11 +390,11 @@ export function StatusView() {
             
             <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-4">
               <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
-                <Zap className="w-3 h-3 mr-1" /> BASAL METABOLIC RATE
+                <Zap className="w-3 h-3 mr-1" /> METABOLIC RATE (TDEE)
               </div>
-              <div className="text-2xl font-mono text-white mb-1">{Math.round(bmr)} <span className="text-sm text-[#A3A3A3]">kcal/day</span></div>
+              <div className="text-2xl font-mono text-white mb-1">{Math.round(tdee)} <span className="text-sm text-[#A3A3A3]">kcal/day</span></div>
               <div className="text-xs font-mono text-[#A3A3A3] mt-2">
-                Est. Maintenance: <span className="text-white">{Math.round(bmr * 1.55)} kcal</span> (Active)
+                Base BMR: <span className="text-white">{Math.round(bmr)} kcal</span>
               </div>
             </div>
 

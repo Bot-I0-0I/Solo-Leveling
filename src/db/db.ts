@@ -1,4 +1,5 @@
 import Dexie, { Table } from 'dexie';
+import { toast } from 'sonner';
 
 export interface UserStats {
   id: number;
@@ -19,6 +20,8 @@ export interface UserStats {
   gender?: 'male' | 'female' | 'other';
   statPoints?: number;
   notes?: string;
+  fitnessGoal?: 'lose' | 'maintain' | 'build';
+  activityLevel?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
 }
 
 export interface Quest {
@@ -40,6 +43,8 @@ export interface Dungeon {
   currentHealth: number;
   status: 'active' | 'cleared';
   shadowExtracted: boolean;
+  rewardCredits?: number;
+  rewardXp?: number;
 }
 
 export interface InventoryItem {
@@ -61,8 +66,10 @@ export interface ShopItem {
 export interface VesselLog {
   id?: number;
   date: string;
-  weight: number;
+  weight?: number;
   bodyFat?: number;
+  sleepHours?: number;
+  stressLevel?: 1 | 2 | 3 | 4 | 5;
 }
 
 export interface WeeklyReview {
@@ -81,6 +88,8 @@ export interface Task {
   time: string;
   completed: boolean;
   priority: 'low' | 'medium' | 'high';
+  recurrence?: 'none' | 'daily' | 'weekly' | 'monthly';
+  xpReward?: number;
 }
 
 export interface LedgerEntry {
@@ -89,12 +98,13 @@ export interface LedgerEntry {
   amount: number;
   type: 'income' | 'expense';
   description: string;
+  category?: string;
 }
 
 export interface NutritionLog {
   id?: number;
   date: string;
-  type: 'food' | 'exercise';
+  type: 'food' | 'exercise' | 'water';
   name: string;
   calories: number;
   protein?: number;
@@ -102,6 +112,7 @@ export interface NutritionLog {
   fat?: number;
   duration?: number;
   muscleGroup?: 'chest' | 'back' | 'legs' | 'arms' | 'shoulders' | 'core' | 'cardio';
+  amount?: number; // For water in ml
 }
 
 export interface TacticalLog {
@@ -241,6 +252,14 @@ export async function addXp(amount: number) {
   const updates: Partial<UserStats> = { xp: newXp };
   if (levelsGained > 0) {
     updates.statPoints = (stats.statPoints || 0) + (levelsGained * 3); // 3 points per level
+    toast.success(`LEVEL UP! You reached level ${newLevel}. +${levelsGained * 3} Stat Points.`, {
+      style: {
+        background: '#141414',
+        border: '1px solid #00F0FF',
+        color: '#00F0FF',
+        fontFamily: 'monospace'
+      }
+    });
   }
 
   await db.userStats.update(1, updates);

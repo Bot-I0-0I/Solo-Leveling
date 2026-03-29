@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { cn } from '../lib/utils';
-import { Coins, Package, Lock, Plus } from 'lucide-react';
+import { Coins, Package, Lock, Plus, ShoppingCart, Trash2 } from 'lucide-react';
 
 export function StoreView() {
   const userStats = useLiveQuery(() => db.userStats.get(1));
@@ -28,6 +28,15 @@ export function StoreView() {
       attributeBoosts: item.attributeBoosts,
       equipped: false
     });
+    
+    // Log expense to ledger
+    await db.ledger.add({
+      date: new Date().toISOString().split('T')[0],
+      amount: item.cost,
+      type: 'expense',
+      category: 'Shop Purchase',
+      description: `Purchased item: ${item.name}`
+    } as any);
   };
 
   const handleEquip = async (id: number, currentEquipped: boolean) => {
@@ -49,6 +58,14 @@ export function StoreView() {
     setNewItemCost('');
     setNewItemBoost('');
     setIsAdding(false);
+  };
+
+  const handleDeleteShopItem = async (id: number) => {
+    await db.shopItems.delete(id);
+  };
+
+  const handleDeleteInventoryItem = async (id: number) => {
+    await db.inventory.delete(id);
   };
 
   if (!userStats || !shopItems || !inventory) return <div>Loading Economy...</div>;
@@ -83,7 +100,7 @@ export function StoreView() {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h3 className="text-xl font-mono text-white flex items-center">
-              <ShoppingCartIcon className="w-5 h-5 mr-2 text-[#00F0FF]" />
+              <ShoppingCart className="w-5 h-5 mr-2 text-[#00F0FF]" />
               REWARD SHOP
             </h3>
             <button
@@ -167,7 +184,7 @@ export function StoreView() {
 
           <div className="grid gap-4">
             {availableItems.map(item => (
-              <div key={item.id} className="bg-[#141414] border border-[#262626] rounded-xl p-4 flex justify-between items-center hover:border-[#333] transition-colors">
+              <div key={item.id} className="bg-[#141414] border border-[#262626] rounded-xl p-4 flex justify-between items-center hover:border-[#333] transition-colors group">
                 <div>
                   <h4 className="font-mono text-white">{item.name}</h4>
                   <div className="flex gap-2 mt-1">
@@ -178,14 +195,23 @@ export function StoreView() {
                     ))}
                   </div>
                 </div>
-                <button 
-                  onClick={() => handleBuy(item)}
-                  disabled={userStats.credits < item.cost}
-                  className="bg-[#262626] hover:bg-[#333] disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md font-mono text-sm transition-colors flex items-center"
-                >
-                  <Coins className="w-4 h-4 mr-2 text-[#FFD700]" />
-                  {item.cost}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => handleDeleteShopItem(item.id!)}
+                    className="text-[#A3A3A3] hover:text-red-500 p-2 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                    title="Delete Item"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => handleBuy(item)}
+                    disabled={userStats.credits < item.cost}
+                    className="bg-[#262626] hover:bg-[#333] disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md font-mono text-sm transition-colors flex items-center"
+                  >
+                    <Coins className="w-4 h-4 mr-2 text-[#FFD700]" />
+                    {item.cost}
+                  </button>
+                </div>
               </div>
             ))}
             {availableItems.length === 0 && (
@@ -205,7 +231,7 @@ export function StoreView() {
           <div className="grid gap-4">
             {inventory.map(item => (
               <div key={item.id} className={cn(
-                "bg-[#141414] border rounded-xl p-4 flex justify-between items-center transition-colors",
+                "bg-[#141414] border rounded-xl p-4 flex justify-between items-center transition-colors group",
                 item.equipped ? "border-[#00F0FF]/50 bg-[#00F0FF]/5" : "border-[#262626]"
               )}>
                 <div>
@@ -223,17 +249,26 @@ export function StoreView() {
                     ))}
                   </div>
                 </div>
-                <button 
-                  onClick={() => handleEquip(item.id!, item.equipped)}
-                  className={cn(
-                    "px-4 py-2 rounded-md font-mono text-sm transition-colors border",
-                    item.equipped 
-                      ? "bg-[#00F0FF]/20 text-[#00F0FF] border-[#00F0FF]/50 hover:bg-[#00F0FF]/30" 
-                      : "bg-[#262626] text-white border-transparent hover:bg-[#333]"
-                  )}
-                >
-                  {item.equipped ? 'EQUIPPED' : 'EQUIP'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => handleDeleteInventoryItem(item.id!)}
+                    className="text-[#A3A3A3] hover:text-red-500 p-2 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                    title="Delete Item"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => handleEquip(item.id!, item.equipped)}
+                    className={cn(
+                      "px-4 py-2 rounded-md font-mono text-sm transition-colors border",
+                      item.equipped 
+                        ? "bg-[#00F0FF]/20 text-[#00F0FF] border-[#00F0FF]/50 hover:bg-[#00F0FF]/30" 
+                        : "bg-[#262626] text-white border-transparent hover:bg-[#333]"
+                    )}
+                  >
+                    {item.equipped ? 'EQUIPPED' : 'EQUIP'}
+                  </button>
+                </div>
               </div>
             ))}
             {inventory.length === 0 && (

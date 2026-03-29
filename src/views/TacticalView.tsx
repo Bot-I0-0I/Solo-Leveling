@@ -210,7 +210,7 @@ export function TacticalView() {
             <h3 className="text-lg font-mono text-white mb-4">PERFORMANCE TREND (K/D)</h3>
             <div className="h-[200px] w-full">
               {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
                     <XAxis dataKey="date" stroke="#A3A3A3" fontSize={10} tickLine={false} axisLine={false} />

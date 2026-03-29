@@ -7,31 +7,52 @@ import { format } from 'date-fns';
 
 export function LedgerView() {
   const ledger = useLiveQuery(() => db.ledger.orderBy('date').reverse().toArray());
+  const userStats = useLiveQuery(() => db.userStats.get(1));
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [type, setType] = useState<'income' | 'expense'>('expense');
+  const [type, setType] = useState<'income' | 'expense'>('income');
+  const [category, setCategory] = useState('Quest Reward');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+
+  const incomeCategories = ['Quest Reward', 'Salary', 'Investment', 'Other'];
+  const expenseCategories = ['Shop Purchase', 'Food/Drink', 'Bills', 'Entertainment', 'Other'];
+
+  const handleTypeChange = (newType: 'income' | 'expense') => {
+    setType(newType);
+    setCategory(newType === 'income' ? incomeCategories[0] : expenseCategories[0]);
+  };
 
   const handleAddEntry = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || !description) return;
+    if (!amount || !description || !userStats) return;
 
+    const val = parseFloat(amount);
     await db.ledger.add({
-      amount: parseFloat(amount),
+      amount: val,
       description,
       type,
-      date
-    });
+      date,
+      category
+    } as any);
+
+    // Update user credits
+    const newCredits = type === 'income' ? userStats.credits + val : userStats.credits - val;
+    await db.userStats.update(1, { credits: newCredits });
 
     setAmount('');
     setDescription('');
   };
 
-  const deleteEntry = async (id: number) => {
-    await db.ledger.delete(id);
+  const deleteEntry = async (entry: any) => {
+    if (!userStats) return;
+    await db.ledger.delete(entry.id);
+    
+    // Reverse the credit change
+    const newCredits = entry.type === 'income' ? userStats.credits - entry.amount : userStats.credits + entry.amount;
+    await db.userStats.update(1, { credits: newCredits });
   };
 
-  if (!ledger) return <div className="animate-pulse">Loading Treasury...</div>;
+  if (!ledger || !userStats) return <div className="animate-pulse">Loading Treasury...</div>;
 
   const totalIncome = ledger.filter(l => l.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
   const totalExpense = ledger.filter(l => l.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
@@ -90,7 +111,15 @@ export function LedgerView() {
                       </div>
                       <div>
                         <h4 className="font-mono text-white text-sm">{entry.description}</h4>
-                        <div className="text-xs font-mono text-[#A3A3A3] mt-1">{entry.date}</div>
+                        <div className="text-xs font-mono text-[#A3A3A3] mt-1 flex items-center gap-2">
+                          <span>{entry.date}</span>
+                          {entry.category && (
+                            <>
+                              <span>•</span>
+                              <span className="bg-[#262626] px-1.5 py-0.5 rounded text-[10px] uppercase">{entry.category}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -100,7 +129,7 @@ export function LedgerView() {
                       )}>
                         {entry.type === 'income' ? '+' : '-'}${entry.amount.toFixed(2)}
                       </span>
-                      <button onClick={() => deleteEntry(entry.id!)} className="text-[#A3A3A3] hover:text-red-500 transition-colors">
+                      <button onClick={() => deleteEntry(entry)} className="text-[#A3A3A3] hover:text-red-500 transition-colors">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -122,7 +151,7 @@ export function LedgerView() {
               <div className="flex bg-[#0A0A0A] border border-[#262626] rounded-md p-1">
                 <button
                   type="button"
-                  onClick={() => setType('expense')}
+                  onClick={() => handleTypeChange('expense')}
                   className={cn(
                     "flex-1 py-2 text-xs font-mono rounded transition-colors",
                     type === 'expense' ? "bg-red-950/50 text-red-400 border border-red-900/50" : "text-[#A3A3A3] hover:text-white"
@@ -132,7 +161,7 @@ export function LedgerView() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setType('income')}
+                  onClick={() => handleTypeChange('income')}
                   className={cn(
                     "flex-1 py-2 text-xs font-mono rounded transition-colors",
                     type === 'income' ? "bg-green-950/50 text-green-400 border border-green-900/50" : "text-[#A3A3A3] hover:text-white"
@@ -140,6 +169,19 @@ export function LedgerView() {
                 >
                   INCOME
                 </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#A3A3A3] mb-1">CATEGORY</label>
+                <select 
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                >
+                  {(type === 'income' ? incomeCategories : expenseCategories).map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
               </div>
 
               <div>

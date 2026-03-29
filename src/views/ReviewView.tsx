@@ -12,6 +12,7 @@ export function ReviewView() {
   const [accomplishments, setAccomplishments] = useState('');
   const [challenges, setChallenges] = useState('');
   const [intentions, setIntentions] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!reviews || !userStats) return <div className="animate-pulse">Loading Archives...</div>;
 
@@ -34,26 +35,31 @@ export function ReviewView() {
   };
 
   const handleSubmitReview = async () => {
-    if (!pendingReview || !pendingReview.id) return;
+    if (!pendingReview || !pendingReview.id || isSubmitting) return;
+    setIsSubmitting(true);
     
-    await db.weeklyReviews.update(pendingReview.id, {
-      accomplishments,
-      challenges,
-      intentions,
-      status: 'completed'
-    });
+    try {
+      await db.weeklyReviews.update(pendingReview.id, {
+        accomplishments,
+        challenges,
+        intentions,
+        status: 'completed'
+      });
 
-    // Reward for completing the review
-    await db.userStats.update(1, {
-      credits: userStats.credits + 100,
-      INT: userStats.INT + 1,
-      SEN: userStats.SEN + 1
-    });
-    await addXp(200);
+      // Reward for completing the review
+      await db.userStats.update(1, {
+        INT: userStats.INT + 1,
+        SEN: userStats.SEN + 1
+      });
+      await addXp(200);
 
-    setAccomplishments('');
-    setChallenges('');
-    setIntentions('');
+      setAccomplishments('');
+      setChallenges('');
+      setIntentions('');
+    } catch (error) {
+      console.error(error);
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -102,11 +108,11 @@ export function ReviewView() {
             
             <button 
               onClick={handleSubmitReview}
-              disabled={!accomplishments || !challenges || !intentions}
+              disabled={!accomplishments || !challenges || !intentions || isSubmitting}
               className="w-full bg-[#262626] hover:bg-[#333] disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-md font-mono text-sm transition-colors flex items-center justify-center border border-[#262626] hover:border-[#00F0FF]/50"
             >
               <CheckCircle className="w-4 h-4 mr-2 text-[#00F0FF]" /> 
-              SUBMIT CALIBRATION (+200 XP, +100 CREDITS, +1 INT, +1 SEN)
+              {isSubmitting ? 'SUBMITTING...' : 'SUBMIT CALIBRATION (+200 XP, +1 INT, +1 SEN)'}
             </button>
           </div>
         </div>
