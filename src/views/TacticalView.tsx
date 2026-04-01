@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp } from '../db/db';
 import { Crosshair, TrendingUp, Calculator, Plus, Trash2, Target, ShieldAlert } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, getRank } from '../lib/utils';
 import { format } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
@@ -17,9 +17,10 @@ export function TacticalView() {
   const [deaths, setDeaths] = useState('');
   const [notes, setNotes] = useState('');
 
-  if (!userStats) return <div className="animate-pulse">Loading Tactical...</div>;
+  if (!userStats) return <div className="opacity-80">Loading Tactical...</div>;
 
-  const themeColor = userStats.themeColor || '#00F0FF';
+  const level = Math.floor((userStats.xp || 0) / 1000) + 1;
+  const { color: themeColor } = getRank(level);
 
   const handleLogMatch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,7 +196,8 @@ export function TacticalView() {
 
             <button
               type="submit"
-              className="w-full bg-[#1A1A1A] hover:bg-[#262626] border border-[#333] text-white py-2 rounded-md font-mono text-sm transition-colors flex items-center justify-center mt-4"
+              className="w-full border py-2 rounded-md font-mono text-sm transition-colors flex items-center justify-center mt-4"
+              style={{ color: themeColor, borderColor: `${themeColor}80`, backgroundColor: `${themeColor}10` }}
             >
               <Plus className="w-4 h-4 mr-2" />
               LOG MATCH

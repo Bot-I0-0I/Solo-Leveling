@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp, Task } from '../db/db';
-import { cn } from '../lib/utils';
+import { cn, getRank } from '../lib/utils';
 import { CalendarDays, CheckCircle, Circle, Plus, Clock, Repeat, AlertTriangle } from 'lucide-react';
 import { format, isBefore, startOfDay } from 'date-fns';
 
 export function SchedulerView() {
+  const userStats = useLiveQuery(() => db.userStats.get(1));
   const tasks = useLiveQuery(() => db.tasks.orderBy('date').toArray());
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [time, setTime] = useState('12:00');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [xpReward, setXpReward] = useState(50);
+
+  const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
+  const { color: themeColor } = getRank(level);
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +73,7 @@ export function SchedulerView() {
     await db.tasks.bulkDelete(completedIds);
   };
 
-  if (!tasks) return <div className="animate-pulse">Loading Directives...</div>;
+  if (!tasks) return <div className="opacity-80">Loading Directives...</div>;
 
   const upcomingTasks = tasks.filter(t => !t.completed);
   const completedTasks = tasks.filter(t => t.completed);
@@ -85,7 +89,7 @@ export function SchedulerView() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <h3 className="text-xl font-mono text-white flex items-center">
-            <CalendarDays className="w-5 h-5 mr-2 text-[#00F0FF]" />
+            <CalendarDays className="w-5 h-5 mr-2" style={{ color: themeColor }} />
             PENDING DIRECTIVES
           </h3>
           
@@ -102,8 +106,8 @@ export function SchedulerView() {
                   <div className="flex items-center gap-4 flex-1">
                     <button onClick={() => toggleTask(task)} className={cn(
                       "transition-colors flex-shrink-0",
-                      isOverdue ? "text-red-500 hover:text-red-400" : "text-[#A3A3A3] hover:text-[#00F0FF]"
-                    )}>
+                      isOverdue ? "text-red-500 hover:text-red-400" : "text-[#A3A3A3]"
+                    )} style={!isOverdue ? { color: themeColor } : {}}>
                       <Circle className="w-5 h-5" />
                     </button>
                     <div className="flex-1">
@@ -123,7 +127,7 @@ export function SchedulerView() {
                           {task.priority.toUpperCase()}
                         </span>
                         {task.xpReward && (
-                          <span className="text-[#00F0FF] border border-[#00F0FF]/30 bg-[#00F0FF]/10 px-1.5 rounded">
+                          <span className="border px-1.5 rounded" style={{ color: themeColor, borderColor: `${themeColor}30`, backgroundColor: `${themeColor}10` }}>
                             +{task.xpReward} XP
                           </span>
                         )}
@@ -212,7 +216,8 @@ export function SchedulerView() {
                   type="text" 
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                  style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                   placeholder="e.g., Submit Report"
                 />
               </div>
@@ -223,7 +228,8 @@ export function SchedulerView() {
                     type="date" 
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                    style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                   />
                 </div>
                 <div>
@@ -232,7 +238,8 @@ export function SchedulerView() {
                     type="time" 
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                    style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                   />
                 </div>
               </div>
@@ -241,7 +248,8 @@ export function SchedulerView() {
                 <select 
                   value={priority}
                   onChange={(e) => setPriority(e.target.value as any)}
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                  style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                 >
                   <option value="low">LOW</option>
                   <option value="medium">MEDIUM</option>
@@ -254,7 +262,8 @@ export function SchedulerView() {
                   type="number" 
                   value={xpReward}
                   onChange={(e) => setXpReward(parseInt(e.target.value) || 0)}
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                  style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                   min="0"
                 />
               </div>

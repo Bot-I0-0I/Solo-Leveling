@@ -2,7 +2,7 @@ import React from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid } from 'recharts';
-import { cn } from '../lib/utils';
+import { cn, getRank } from '../lib/utils';
 import { Activity, Brain, Zap, Heart, Target, Plus, TrendingUp, AlertCircle, Edit3, CheckCircle, Flame, Coins, Calendar } from 'lucide-react';
 import { format, startOfWeek } from 'date-fns';
 
@@ -20,7 +20,8 @@ export function StatusView() {
   const todayLedger = useLiveQuery(() => db.ledger.where('date').equals(today).toArray());
   const weeklyReview = useLiveQuery(() => db.weeklyReviews.where('weekStartDate').equals(weekStart).first());
 
-  const themeColor = userStats?.themeColor || '#00F0FF';
+  const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
+  const { rank, color: themeColor } = getRank(level);
 
   const [weight, setWeight] = React.useState('');
   const [bodyFat, setBodyFat] = React.useState('');
@@ -64,7 +65,7 @@ export function StatusView() {
     setStressLevel('');
   };
 
-  if (!userStats) return <div className="animate-pulse">Loading System Data...</div>;
+  if (!userStats) return <div className="opacity-80">Loading System Data...</div>;
 
   // Calculate equipped boosts
   const equippedItems = inventory?.filter(i => i.equipped) || [];
@@ -81,31 +82,15 @@ export function StatusView() {
   const totalINT = userStats.INT + boosts.INT;
   const totalSEN = userStats.SEN + boosts.SEN;
 
-  const level = Math.floor((userStats.xp || 0) / 1000) + 1;
-  const statPoints = userStats.statPoints || 0;
-
-  const handleAllocateStat = async (attr: 'STR' | 'VIT' | 'AGI' | 'INT' | 'SEN') => {
-    if (statPoints > 0) {
-      await db.userStats.update(1, {
-        [attr]: userStats[attr] + 1,
-        statPoints: statPoints - 1
-      });
-    }
-  };
-  
-  let rank = 'E';
-  if (level >= 100) rank = 'S';
-  else if (level >= 80) rank = 'A';
-  else if (level >= 60) rank = 'B';
-  else if (level >= 40) rank = 'C';
-  else if (level >= 20) rank = 'D';
+  const maxAttribute = Math.max(totalSTR, totalVIT, totalAGI, totalINT, totalSEN, 150);
+  const chartFullMark = Math.ceil(maxAttribute / 50) * 50; // Round up to nearest 50
 
   const chartData = [
-    { subject: 'STR', A: totalSTR, fullMark: 150 },
-    { subject: 'VIT', A: totalVIT, fullMark: 150 },
-    { subject: 'AGI', A: totalAGI, fullMark: 150 },
-    { subject: 'INT', A: totalINT, fullMark: 150 },
-    { subject: 'SEN', A: totalSEN, fullMark: 150 },
+    { subject: 'STR', A: totalSTR, fullMark: chartFullMark },
+    { subject: 'VIT', A: totalVIT, fullMark: chartFullMark },
+    { subject: 'AGI', A: totalAGI, fullMark: chartFullMark },
+    { subject: 'INT', A: totalINT, fullMark: chartFullMark },
+    { subject: 'SEN', A: totalSEN, fullMark: chartFullMark },
   ];
 
   const attributes = [
@@ -222,21 +207,18 @@ export function StatusView() {
         <div className="col-span-1 bg-[#141414] border border-[#262626] rounded-xl p-6 flex flex-col items-center justify-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00F0FF] to-transparent opacity-50"></div>
           <div className="text-sm font-mono text-[#A3A3A3] mb-2">CURRENT RANK</div>
-          <div className={cn(
-            "text-8xl font-black font-mono leading-none mb-4",
-            rank === 'S' ? 'text-[#FFD700] drop-shadow-[0_0_15px_rgba(255,215,0,0.5)]' :
-            rank === 'A' ? 'text-purple-500' :
-            rank === 'B' ? 'text-blue-500' :
-            rank === 'C' ? 'text-green-500' :
-            'text-gray-400'
-          )}>
+          <div 
+            className="text-6xl md:text-8xl font-black font-mono leading-none mb-4"
+            style={{ color: themeColor, textShadow: `0 0 10px ${themeColor}40` }}
+          >
             {rank}
           </div>
           <div className="text-2xl font-mono text-white">LEVEL {level}</div>
+          <div className="text-sm font-mono text-[#A3A3A3] mt-1 uppercase tracking-widest">{userStats.role || 'Player'}</div>
           <div className="mt-4 w-full bg-[#262626] h-2 rounded-full overflow-hidden">
             <div 
-              className="h-full bg-[#00F0FF]" 
-              style={{ width: `${(userStats.xp % 1000) / 10}%` }}
+              className="h-full transition-all duration-500" 
+              style={{ width: `${(userStats.xp % 1000) / 10}%`, backgroundColor: themeColor }}
             ></div>
           </div>
           <div className="text-xs text-[#A3A3A3] mt-2 text-right w-full">{userStats.xp % 1000} / 1000 XP</div>
@@ -270,29 +252,10 @@ export function StatusView() {
                   <span className="text-sm text-green-400 ml-2">+{boosts[attr.key as keyof typeof boosts]}</span>
                 )}
               </div>
-              {statPoints > 0 && (
-                <button
-                  onClick={() => handleAllocateStat(attr.key as any)}
-                  className="bg-[#262626] hover:bg-[#333] text-white p-1.5 rounded-md transition-colors"
-                  title={`Allocate 1 point to ${attr.label}`}
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              )}
             </div>
           </div>
         ))}
       </div>
-
-      {statPoints > 0 && (
-        <div className="bg-[#1A1A1A] border border-[#00F0FF]/30 rounded-xl p-4 flex items-center justify-between shadow-[0_0_15px_rgba(0,240,255,0.1)]" style={{ borderColor: `${themeColor}40` }}>
-          <div className="flex items-center">
-            <div className="w-2 h-2 rounded-full animate-pulse mr-3" style={{ backgroundColor: themeColor }}></div>
-            <span className="font-mono text-sm text-white">UNALLOCATED ATTRIBUTE POINTS</span>
-          </div>
-          <span className="font-mono font-bold text-xl" style={{ color: themeColor }}>{statPoints}</span>
-        </div>
-      )}
 
       {/* Vessel Tracker */}
       <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
@@ -337,7 +300,8 @@ export function StatusView() {
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
                   placeholder="e.g., 75.5" 
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                  style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                 />
               </div>
               <div>
@@ -348,7 +312,8 @@ export function StatusView() {
                   value={bodyFat}
                   onChange={(e) => setBodyFat(e.target.value)}
                   placeholder="e.g., 15.2" 
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                  style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                 />
               </div>
               <div>
@@ -360,7 +325,8 @@ export function StatusView() {
                   value={stressLevel}
                   onChange={(e) => setStressLevel(e.target.value)}
                   placeholder="1 = Low" 
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                  style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                 />
               </div>
               <button type="submit" className="w-full bg-[#262626] hover:bg-[#333] text-white px-4 py-3 rounded-md font-mono text-sm transition-colors flex items-center justify-center mt-2">
@@ -438,8 +404,8 @@ export function StatusView() {
           onChange={(e) => setNotes(e.target.value)}
           onBlur={handleSaveNotes}
           placeholder="Enter quick notes, thoughts, or temporary data here..."
-          className="w-full h-32 bg-[#0A0A0A] border border-[#262626] rounded-md p-4 text-[#A3A3A3] font-mono text-sm focus:outline-none focus:border-[#00F0FF] focus:text-white transition-colors resize-none"
-          style={{ focusBorderColor: themeColor } as any}
+          className="w-full h-32 bg-[#0A0A0A] border border-[#262626] rounded-md p-4 text-[#A3A3A3] font-mono text-sm focus:outline-none focus:text-white transition-colors resize-none"
+          style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
         />
       </div>
     </div>

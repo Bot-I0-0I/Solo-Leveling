@@ -14,14 +14,15 @@ export interface UserStats {
   lastResetDate: string;
   name?: string;
   avatar?: string;
-  themeColor?: string;
   height?: number;
   age?: number;
   gender?: 'male' | 'female' | 'other';
-  statPoints?: number;
   notes?: string;
   fitnessGoal?: 'lose' | 'maintain' | 'build';
   activityLevel?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+  role?: string;
+  uiTheme?: string;
+  backgroundImage?: string;
 }
 
 export interface Quest {
@@ -34,6 +35,7 @@ export interface Quest {
   completed: boolean;
   date: string; // YYYY-MM-DD
   baseReward: number;
+  isRecurring?: boolean;
 }
 
 export interface Dungeon {
@@ -115,6 +117,24 @@ export interface NutritionLog {
   amount?: number; // For water in ml
 }
 
+export interface FoodTemplate {
+  id?: number;
+  name: string;
+  calories: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+}
+
+export interface QuestTemplate {
+  id?: number;
+  title: string;
+  attribute: 'STR' | 'VIT' | 'AGI' | 'INT' | 'SEN';
+  targetValue: number;
+  baseReward: number;
+  isRecurring?: boolean;
+}
+
 export interface TacticalLog {
   id?: number;
   date: string;
@@ -138,6 +158,8 @@ export class SystemDatabase extends Dexie {
   ledger!: Table<LedgerEntry, number>;
   nutritionLogs!: Table<NutritionLog, number>;
   tacticalLogs!: Table<TacticalLog, number>;
+  foodTemplates!: Table<FoodTemplate, number>;
+  questTemplates!: Table<QuestTemplate, number>;
 
   constructor() {
     super('SystemDB');
@@ -205,6 +227,35 @@ export class SystemDatabase extends Dexie {
       nutritionLogs: '++id, date, type',
       tacticalLogs: '++id, date, game'
     });
+    this.version(7).stores({
+      userStats: 'id',
+      quests: '++id, date, type, completed',
+      dungeons: '++id, status',
+      inventory: '++id, type, equipped',
+      shopItems: '++id, purchased',
+      vesselLogs: '++id, date',
+      weeklyReviews: '++id, weekStartDate, status',
+      tasks: '++id, date, completed',
+      ledger: '++id, date, type',
+      nutritionLogs: '++id, date, type',
+      tacticalLogs: '++id, date, game',
+      foodTemplates: '++id, name'
+    });
+    this.version(8).stores({
+      userStats: 'id',
+      quests: '++id, date, type, completed',
+      dungeons: '++id, status',
+      inventory: '++id, type, equipped',
+      shopItems: '++id, purchased',
+      vesselLogs: '++id, date',
+      weeklyReviews: '++id, weekStartDate, status',
+      tasks: '++id, date, completed',
+      ledger: '++id, date, type',
+      nutritionLogs: '++id, date, type',
+      tacticalLogs: '++id, date, game',
+      foodTemplates: '++id, name',
+      questTemplates: '++id, title'
+    });
   }
 }
 
@@ -221,7 +272,6 @@ db.on('populate', async () => {
     SEN: 10,
     credits: 0,
     xp: 0,
-    statPoints: 0,
     penaltyActive: false,
     lastResetDate: new Date().toISOString().split('T')[0],
   });
@@ -240,7 +290,7 @@ db.on('populate', async () => {
   ]);
 });
 
-export async function addXp(amount: number) {
+export async function addXp(amount: number, attribute?: 'STR' | 'VIT' | 'AGI' | 'INT' | 'SEN') {
   const stats = await db.userStats.get(1);
   if (!stats) return;
 
@@ -250,13 +300,24 @@ export async function addXp(amount: number) {
   const levelsGained = newLevel - oldLevel;
 
   const updates: Partial<UserStats> = { xp: newXp };
+  
+  if (attribute) {
+    // Add 10% of the XP gained directly to the specific attribute
+    const attributeGain = Math.max(1, Math.floor(amount / 10));
+    updates[attribute] = (stats[attribute] || 0) + attributeGain;
+  }
+
   if (levelsGained > 0) {
-    updates.statPoints = (stats.statPoints || 0) + (levelsGained * 3); // 3 points per level
-    toast.success(`LEVEL UP! You reached level ${newLevel}. +${levelsGained * 3} Stat Points.`, {
+    // Import getRank dynamically or just use the logic here. Actually, we can import it at the top.
+    // Wait, I need to add the import at the top of the file.
+    const { getRank } = await import('../lib/utils');
+    const { color: themeColor } = getRank(newLevel);
+    
+    toast.success(`LEVEL UP! You reached level ${newLevel}.`, {
       style: {
         background: '#141414',
-        border: '1px solid #00F0FF',
-        color: '#00F0FF',
+        border: `1px solid ${themeColor}`,
+        color: themeColor,
         fontFamily: 'monospace'
       }
     });

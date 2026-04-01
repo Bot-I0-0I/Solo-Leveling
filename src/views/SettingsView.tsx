@@ -1,31 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { cn } from '../lib/utils';
-import { Settings, User, Palette, Activity, Save, Upload, Download, Database, Trash2, Moon, Sun, AlertTriangle } from 'lucide-react';
+import { cn, getRank } from '../lib/utils';
+import { Settings, User, Palette, Activity, Save, Upload, Download, Database, Trash2, Moon, Sun, AlertTriangle, Cloud, RefreshCw } from 'lucide-react';
 import { useStore } from '../store/useStore';
-
-const THEMES = [
-  { name: 'Cyan (Default)', hex: '#00F0FF' },
-  { name: 'Neon Green', hex: '#39FF14' },
-  { name: 'Purple', hex: '#B026FF' },
-  { name: 'Crimson', hex: '#FF003C' },
-  { name: 'Gold', hex: '#FFD700' },
-  { name: 'Monochrome', hex: '#FFFFFF' },
-];
+import { useAuth } from '../AuthContext';
+import { useCloudSync } from '../useCloudSync';
+import { format } from 'date-fns';
 
 export function SettingsView() {
   const userStats = useLiveQuery(() => db.userStats.get(1));
   const { theme, toggleTheme } = useStore();
+  const { user } = useAuth();
+  const { isSyncing, lastSync, forceSync } = useCloudSync();
   
+  const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
+  const { color: themeColor } = getRank(level);
+
   const [name, setName] = useState('');
   const [height, setHeight] = useState('');
   const [age, setAge] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
   const [fitnessGoal, setFitnessGoal] = useState<'lose' | 'maintain' | 'build'>('maintain');
   const [activityLevel, setActivityLevel] = useState<'sedentary' | 'light' | 'moderate' | 'active' | 'very_active'>('sedentary');
-  const [themeColor, setThemeColor] = useState('#00F0FF');
   const [avatar, setAvatar] = useState('');
+  const [role, setRole] = useState('Player');
+  const [uiTheme, setUiTheme] = useState('default');
+  const [backgroundImage, setBackgroundImage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -36,8 +37,10 @@ export function SettingsView() {
       setGender(userStats.gender || 'male');
       setFitnessGoal(userStats.fitnessGoal || 'maintain');
       setActivityLevel(userStats.activityLevel || 'sedentary');
-      setThemeColor(userStats.themeColor || '#00F0FF');
       setAvatar(userStats.avatar || '');
+      setRole(userStats.role || 'Player');
+      setUiTheme(userStats.uiTheme || 'default');
+      setBackgroundImage(userStats.backgroundImage || '');
     }
   }, [userStats]);
 
@@ -52,6 +55,21 @@ export function SettingsView() {
     }
   };
 
+  const handleBgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBackgroundImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveBgImage = () => {
+    setBackgroundImage('');
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     await db.userStats.update(1, {
@@ -61,9 +79,14 @@ export function SettingsView() {
       gender,
       fitnessGoal,
       activityLevel,
-      themeColor,
-      avatar
+      avatar,
+      role,
+      uiTheme,
+      backgroundImage
     });
+    if (user) {
+      await forceSync();
+    }
     setTimeout(() => setIsSaving(false), 500);
   };
 
@@ -87,6 +110,9 @@ export function SettingsView() {
             if (data.nutritionLogs) { await db.nutritionLogs.clear(); await db.nutritionLogs.bulkAdd(data.nutritionLogs); }
             if (data.tacticalLogs) { await db.tacticalLogs.clear(); await db.tacticalLogs.bulkAdd(data.tacticalLogs); }
           });
+          if (user) {
+            await forceSync();
+          }
           alert('System data imported successfully!');
           window.location.reload();
         } catch (error) {
@@ -130,7 +156,7 @@ export function SettingsView() {
     }
   };
 
-  if (!userStats) return <div className="animate-pulse">Loading Settings...</div>;
+  if (!userStats) return <div className="opacity-80">Loading Settings...</div>;
 
   return (
     <div className="space-y-8">
@@ -170,14 +196,64 @@ export function SettingsView() {
                 type="text" 
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none transition-colors"
-                style={{ focusBorderColor: themeColor }}
+                className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                 placeholder="Enter your alias"
               />
               <p className="text-xs text-[#A3A3A3] mt-2 flex items-center">
                 <Upload className="w-3 h-3 mr-1" /> Click avatar to upload image
               </p>
             </div>
+          </div>
+          <div className="mt-4">
+            <label className="block text-xs font-mono text-[#A3A3A3] mb-1">CLASS / ROLE</label>
+            <select 
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+              style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
+            >
+              <option value="Player">Player</option>
+              <option value="Hunter">Hunter</option>
+              <option value="Assassin">Assassin</option>
+              <option value="Mage">Mage</option>
+              <option value="Tank">Tank</option>
+              <option value="Healer">Healer</option>
+              <option value="Fighter">Fighter</option>
+              <option value="Ranger">Ranger</option>
+              <option value="Necromancer">Necromancer</option>
+              <option value="Monarch">Monarch</option>
+            </select>
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-xs font-mono text-[#A3A3A3] mb-1">BACKGROUND IMAGE</label>
+            <div className="flex items-center gap-4">
+              <div className="relative flex-1 bg-[#0A0A0A] border border-[#262626] hover:border-[#333] rounded-md px-4 py-2 text-white font-mono text-sm transition-colors cursor-pointer flex items-center justify-center">
+                <Upload className="w-4 h-4 mr-2" />
+                <span>{backgroundImage ? 'Change Image' : 'Upload Image'}</span>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleBgImageUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+              </div>
+              {backgroundImage && (
+                <button 
+                  onClick={handleRemoveBgImage}
+                  className="p-2 text-[#A3A3A3] hover:text-red-400 transition-colors border border-[#262626] rounded-md bg-[#0A0A0A]"
+                  title="Remove Background"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            {backgroundImage && (
+              <div className="mt-2 text-xs text-green-400 flex items-center">
+                <Cloud className="w-3 h-3 mr-1" /> Background image active
+              </div>
+            )}
           </div>
         </div>
 
@@ -266,22 +342,27 @@ export function SettingsView() {
               <span className="text-xs font-mono text-white">{theme === 'dark' ? 'LIGHT MODE' : 'DARK MODE'}</span>
             </button>
           </div>
+          <p className="text-xs text-[#A3A3A3] font-mono">
+            Your system theme color is automatically determined by your current Rank. Level up to unlock new colors!
+          </p>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {THEMES.map((theme) => (
-              <button
-                key={theme.hex}
-                onClick={() => setThemeColor(theme.hex)}
-                className={cn(
-                  "flex flex-col items-center justify-center p-4 rounded-lg border transition-all",
-                  themeColor === theme.hex ? "bg-[#1A1A1A]" : "border-[#262626] hover:border-[#333] bg-[#0A0A0A]"
-                )}
-                style={{ borderColor: themeColor === theme.hex ? theme.hex : undefined }}
-              >
-                <div className="w-8 h-8 rounded-full mb-2 shadow-lg" style={{ backgroundColor: theme.hex, boxShadow: `0 0 10px ${theme.hex}80` }}></div>
-                <span className="text-xs font-mono text-[#A3A3A3]">{theme.name}</span>
-              </button>
-            ))}
+          <div className="mt-4">
+            <label className="block text-xs font-mono text-[#A3A3A3] mb-1">UI THEME (RANK UNLOCKS)</label>
+            <select 
+              value={uiTheme}
+              onChange={(e) => setUiTheme(e.target.value)}
+              className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+              style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
+            >
+              <option value="default">Default (Standard UI)</option>
+              {level >= 40 && <option value="elite">Elite UI (Rank Elite+)</option>}
+              {level >= 50 && <option value="s">S-Class UI (Rank S+)</option>}
+              {level >= 60 && <option value="s_plus">S+ Class UI (Rank S++)</option>}
+              {level >= 70 && <option value="ss">SS-Class UI (Rank SS+)</option>}
+              {level >= 80 && <option value="sss">SSS-Class UI (Rank SSS+)</option>}
+              {level >= 90 && <option value="national">National Hunter UI (Rank National+)</option>}
+              {level >= 100 && <option value="monarch">Monarch UI (Rank Monarch)</option>}
+            </select>
           </div>
         </div>
 
@@ -313,6 +394,31 @@ export function SettingsView() {
               </button>
             </div>
           </div>
+          
+          {user && (
+            <div className="pt-4 border-t border-[#262626]">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center text-white font-mono">
+                  <Cloud className="w-5 h-5 mr-2" style={{ color: themeColor }} />
+                  CLOUD SYNC
+                </div>
+                {lastSync && (
+                  <span className="text-xs text-[#A3A3A3] font-mono">
+                    Last synced: {format(lastSync, 'MMM d, HH:mm')}
+                  </span>
+                )}
+              </div>
+              <button 
+                onClick={forceSync}
+                disabled={isSyncing}
+                className="w-full bg-[#0A0A0A] border border-[#262626] hover:bg-[#1A1A1A] text-white px-4 py-3 rounded-md font-mono text-sm transition-colors flex items-center justify-center disabled:opacity-50"
+              >
+                <RefreshCw className={cn("w-4 h-4 mr-2", isSyncing && "animate-spin")} /> 
+                {isSyncing ? 'SYNCING...' : 'FORCE CLOUD SYNC'}
+              </button>
+            </div>
+          )}
+
           <div className="pt-4 border-t border-[#262626]">
             <button 
               onClick={() => setShowResetConfirm(true)}

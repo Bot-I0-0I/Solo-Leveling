@@ -17,12 +17,15 @@ import { SettingsView } from './views/SettingsView';
 import { NutritionView } from './views/NutritionView';
 import { useStore } from './store/useStore';
 import { useSystemEngine } from './db/engine';
+import { useCloudSync } from './useCloudSync';
 
 import { Toaster } from 'sonner';
 
 export default function App() {
   // Initialize background engine
   useSystemEngine();
+  // Initialize cloud sync
+  useCloudSync();
   
   const currentView = useStore((state) => state.currentView);
   const theme = useStore((state) => state.theme);

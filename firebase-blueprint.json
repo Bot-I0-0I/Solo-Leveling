@@ -1,0 +1,228 @@
+{
+  "entities": {
+    "UserStats": {
+      "title": "UserStats",
+      "description": "User's core statistics and settings.",
+      "type": "object",
+      "properties": {
+        "STR": { "type": "number", "description": "Strength" },
+        "VIT": { "type": "number", "description": "Vitality" },
+        "AGI": { "type": "number", "description": "Agility" },
+        "INT": { "type": "number", "description": "Intelligence" },
+        "SEN": { "type": "number", "description": "Sense" },
+        "credits": { "type": "number", "description": "Available credits" },
+        "xp": { "type": "number", "description": "Experience points" },
+        "penaltyActive": { "type": "boolean", "description": "If penalty is active" },
+        "lastResetDate": { "type": "string", "description": "Last reset date (YYYY-MM-DD)" },
+        "name": { "type": "string", "description": "User's name" },
+        "avatar": { "type": "string", "description": "User's avatar URL" },
+        "height": { "type": "number", "description": "User's height" },
+        "age": { "type": "number", "description": "User's age" },
+        "gender": { "type": "string", "enum": ["male", "female", "other"], "description": "User's gender" },
+        "notes": { "type": "string", "description": "User's notes" },
+        "fitnessGoal": { "type": "string", "enum": ["lose", "maintain", "build"], "description": "User's fitness goal" },
+        "activityLevel": { "type": "string", "enum": ["sedentary", "light", "moderate", "active", "very_active"], "description": "User's activity level" },
+        "uid": { "type": "string", "description": "Firebase Auth UID" }
+      },
+      "required": ["STR", "VIT", "AGI", "INT", "SEN", "credits", "xp", "penaltyActive", "lastResetDate", "uid"]
+    },
+    "Quest": {
+      "title": "Quest",
+      "description": "A task or quest to complete.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Quest title" },
+        "attribute": { "type": "string", "enum": ["STR", "VIT", "AGI", "INT", "SEN"], "description": "Attribute to boost" },
+        "targetValue": { "type": "number", "description": "Target value to complete" },
+        "currentValue": { "type": "number", "description": "Current value" },
+        "type": { "type": "string", "enum": ["daily", "penalty"], "description": "Quest type" },
+        "completed": { "type": "boolean", "description": "If quest is completed" },
+        "date": { "type": "string", "description": "Date of quest (YYYY-MM-DD)" },
+        "baseReward": { "type": "number", "description": "Base reward for completing" },
+        "uid": { "type": "string", "description": "Firebase Auth UID" }
+      },
+      "required": ["title", "attribute", "targetValue", "currentValue", "type", "completed", "date", "baseReward", "uid"]
+    },
+    "Dungeon": {
+      "title": "Dungeon",
+      "description": "A dungeon or challenge.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Dungeon title" },
+        "totalHealth": { "type": "number", "description": "Total health of the dungeon" },
+        "currentHealth": { "type": "number", "description": "Current health of the dungeon" },
+        "status": { "type": "string", "enum": ["active", "cleared"], "description": "Dungeon status" },
+        "shadowExtracted": { "type": "boolean", "description": "If shadow is extracted" },
+        "rewardCredits": { "type": "number", "description": "Reward credits" },
+        "rewardXp": { "type": "number", "description": "Reward XP" },
+        "uid": { "type": "string", "description": "Firebase Auth UID" }
+      },
+      "required": ["title", "totalHealth", "currentHealth", "status", "shadowExtracted", "uid"]
+    },
+    "InventoryItem": {
+      "title": "InventoryItem",
+      "description": "An item in the user's inventory.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Item name" },
+        "type": { "type": "string", "enum": ["item", "shadow"], "description": "Item type" },
+        "attributeBoosts": { "type": "object", "description": "Attribute boosts" },
+        "equipped": { "type": "boolean", "description": "If item is equipped" },
+        "uid": { "type": "string", "description": "Firebase Auth UID" }
+      },
+      "required": ["name", "type", "attributeBoosts", "equipped", "uid"]
+    },
+    "ShopItem": {
+      "title": "ShopItem",
+      "description": "An item available in the shop.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Item name" },
+        "cost": { "type": "number", "description": "Item cost" },
+        "attributeBoosts": { "type": "object", "description": "Attribute boosts" },
+        "purchased": { "type": "boolean", "description": "If item is purchased" },
+        "uid": { "type": "string", "description": "Firebase Auth UID" }
+      },
+      "required": ["name", "cost", "attributeBoosts", "purchased", "uid"]
+    },
+    "VesselLog": {
+      "title": "VesselLog",
+      "description": "A log of the user's physical condition.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "description": "Date of log (YYYY-MM-DD)" },
+        "weight": { "type": "number", "description": "Weight in kg" },
+        "bodyFat": { "type": "number", "description": "Body fat percentage" },
+        "sleepHours": { "type": "number", "description": "Hours of sleep" },
+        "stressLevel": { "type": "number", "enum": [1, 2, 3, 4, 5], "description": "Stress level (1-5)" },
+        "uid": { "type": "string", "description": "Firebase Auth UID" }
+      },
+      "required": ["date", "uid"]
+    },
+    "WeeklyReview": {
+      "title": "WeeklyReview",
+      "description": "A weekly review of progress.",
+      "type": "object",
+      "properties": {
+        "weekStartDate": { "type": "string", "description": "Start date of the week (YYYY-MM-DD)" },
+        "accomplishments": { "type": "string", "description": "Accomplishments" },
+        "challenges": { "type": "string", "description": "Challenges" },
+        "intentions": { "type": "string", "description": "Intentions" },
+        "status": { "type": "string", "enum": ["pending", "completed"], "description": "Review status" },
+        "uid": { "type": "string", "description": "Firebase Auth UID" }
+      },
+      "required": ["weekStartDate", "accomplishments", "challenges", "intentions", "status", "uid"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A task to complete.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Task title" },
+        "date": { "type": "string", "description": "Date of task (YYYY-MM-DD)" },
+        "time": { "type": "string", "description": "Time of task (HH:MM)" },
+        "completed": { "type": "boolean", "description": "If task is completed" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"], "description": "Task priority" },
+        "recurrence": { "type": "string", "enum": ["none", "daily", "weekly", "monthly"], "description": "Task recurrence" },
+        "xpReward": { "type": "number", "description": "XP reward" },
+        "uid": { "type": "string", "description": "Firebase Auth UID" }
+      },
+      "required": ["title", "date", "time", "completed", "priority", "uid"]
+    },
+    "LedgerEntry": {
+      "title": "LedgerEntry",
+      "description": "A ledger entry.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "description": "Date of entry (YYYY-MM-DD)" },
+        "amount": { "type": "number", "description": "Amount" },
+        "type": { "type": "string", "enum": ["income", "expense"], "description": "Entry type" },
+        "description": { "type": "string", "description": "Entry description" },
+        "category": { "type": "string", "description": "Entry category" },
+        "uid": { "type": "string", "description": "Firebase Auth UID" }
+      },
+      "required": ["date", "amount", "type", "description", "uid"]
+    },
+    "NutritionLog": {
+      "title": "NutritionLog",
+      "description": "A nutrition log.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "description": "Date of log (YYYY-MM-DD)" },
+        "type": { "type": "string", "enum": ["food", "exercise", "water"], "description": "Log type" },
+        "name": { "type": "string", "description": "Name of food/exercise" },
+        "calories": { "type": "number", "description": "Calories" },
+        "protein": { "type": "number", "description": "Protein (g)" },
+        "carbs": { "type": "number", "description": "Carbs (g)" },
+        "fat": { "type": "number", "description": "Fat (g)" },
+        "duration": { "type": "number", "description": "Duration (mins)" },
+        "muscleGroup": { "type": "string", "enum": ["chest", "back", "legs", "arms", "shoulders", "core", "cardio"], "description": "Muscle group" },
+        "amount": { "type": "number", "description": "Amount (ml) for water" },
+        "uid": { "type": "string", "description": "Firebase Auth UID" }
+      },
+      "required": ["date", "type", "name", "calories", "uid"]
+    },
+    "TacticalLog": {
+      "title": "TacticalLog",
+      "description": "A tactical log.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "description": "Date of log (YYYY-MM-DD)" },
+        "game": { "type": "string", "description": "Game name" },
+        "focusArea": { "type": "string", "description": "Focus area" },
+        "result": { "type": "string", "enum": ["win", "loss", "draw"], "description": "Result" },
+        "kills": { "type": "number", "description": "Kills" },
+        "deaths": { "type": "number", "description": "Deaths" },
+        "notes": { "type": "string", "description": "Notes" },
+        "uid": { "type": "string", "description": "Firebase Auth UID" }
+      },
+      "required": ["date", "game", "focusArea", "result", "kills", "deaths", "uid"]
+    }
+  },
+  "firestore": {
+    "userStats/{uid}": {
+      "schema": { "$ref": "#/entities/UserStats" },
+      "description": "User statistics and settings."
+    },
+    "quests/{questId}": {
+      "schema": { "$ref": "#/entities/Quest" },
+      "description": "User quests."
+    },
+    "dungeons/{dungeonId}": {
+      "schema": { "$ref": "#/entities/Dungeon" },
+      "description": "User dungeons."
+    },
+    "inventory/{itemId}": {
+      "schema": { "$ref": "#/entities/InventoryItem" },
+      "description": "User inventory items."
+    },
+    "shopItems/{itemId}": {
+      "schema": { "$ref": "#/entities/ShopItem" },
+      "description": "User shop items."
+    },
+    "vesselLogs/{logId}": {
+      "schema": { "$ref": "#/entities/VesselLog" },
+      "description": "User vessel logs."
+    },
+    "weeklyReviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/WeeklyReview" },
+      "description": "User weekly reviews."
+    },
+    "tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "User tasks."
+    },
+    "ledger/{entryId}": {
+      "schema": { "$ref": "#/entities/LedgerEntry" },
+      "description": "User ledger entries."
+    },
+    "nutritionLogs/{logId}": {
+      "schema": { "$ref": "#/entities/NutritionLog" },
+      "description": "User nutrition logs."
+    },
+    "tacticalLogs/{logId}": {
+      "schema": { "$ref": "#/entities/TacticalLog" },
+      "description": "User tactical logs."
+    }
+  }
+}

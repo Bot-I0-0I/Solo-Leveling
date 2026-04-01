@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, addXp } from '../db/db';
-import { Flame, Utensils, Activity, Plus, Trash2, Target, Dumbbell, Droplets, Beef, Wheat, Moon } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { db, addXp, FoodTemplate } from '../db/db';
+import { Flame, Utensils, Activity, Plus, Trash2, Target, Dumbbell, Droplets, Beef, Wheat, Moon, Save, Download } from 'lucide-react';
+import { cn, getRank } from '../lib/utils';
 import { format, subDays } from 'date-fns';
 
 export function NutritionView() {
   const userStats = useLiveQuery(() => db.userStats.get(1));
   const vesselLogs = useLiveQuery(() => db.vesselLogs.toArray());
+  const foodTemplates = useLiveQuery(() => db.foodTemplates.toArray());
   const today = format(new Date(), 'yyyy-MM-dd');
   
   const nutritionLogs = useLiveQuery(
@@ -34,10 +35,12 @@ export function NutritionView() {
   const [amount, setAmount] = useState('');
   const [muscleGroup, setMuscleGroup] = useState<'chest' | 'back' | 'legs' | 'arms' | 'shoulders' | 'core' | 'cardio' | ''>('');
   const [sleepHours, setSleepHours] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
 
-  if (!userStats || !nutritionLogs) return <div className="animate-pulse p-4">Loading Metabolism...</div>;
+  if (!userStats || !nutritionLogs) return <div className="opacity-80 p-4">Loading Metabolism...</div>;
 
-  const themeColor = userStats.themeColor || '#00F0FF';
+  const level = Math.floor((userStats.xp || 0) / 1000) + 1;
+  const { color: themeColor } = getRank(level);
 
   // Calculate BMR and TDEE
   const latestLog = vesselLogs?.[vesselLogs.length - 1];
@@ -147,9 +150,57 @@ export function NutritionView() {
     setFat('');
     setDuration('');
     setMuscleGroup('');
+    setSelectedTemplateId('');
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!name || !calories) {
+      alert("Please enter at least a name and calories to save a template.");
+      return;
+    }
+
+    await db.foodTemplates.add({
+      name: name,
+      calories: Number(calories),
+      protein: protein ? Number(protein) : undefined,
+      carbs: carbs ? Number(carbs) : undefined,
+      fat: fat ? Number(fat) : undefined,
+    });
+    
+    alert("Food template saved!");
+  };
+
+  const handleLoadTemplate = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    if (!templateId) {
+      setName('');
+      setCalories('');
+      setProtein('');
+      setCarbs('');
+      setFat('');
+      return;
+    }
+
+    const template = foodTemplates?.find(t => t.id === Number(templateId));
+    if (template) {
+      setName(template.name);
+      setCalories(template.calories.toString());
+      setProtein(template.protein?.toString() || '');
+      setCarbs(template.carbs?.toString() || '');
+      setFat(template.fat?.toString() || '');
+    }
   };
 
   const handleDelete = async (id: number) => {
+    const log = await db.nutritionLogs.get(id);
+    if (log && log.type === 'exercise' && log.calories) {
+      const xpToRemove = Math.floor(log.calories / 10);
+      if (userStats) {
+        await db.userStats.update(1, {
+          xp: Math.max(0, userStats.xp - xpToRemove)
+        });
+      }
+    }
     await db.nutritionLogs.delete(id);
   };
 
@@ -376,7 +427,7 @@ export function NutritionView() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         {/* Input Form */}
         <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 md:p-6">
-          <div className="flex space-x-4 mb-6 border-b border-[#262626]">
+          <div className="flex flex-wrap gap-4 mb-6 border-b border-[#262626]">
             <button
               onClick={() => setActiveTab('food')}
               className={cn(
@@ -430,6 +481,24 @@ export function NutritionView() {
               </div>
             ) : (
               <>
+                {activeTab === 'food' && (
+                  <div className="mb-4">
+                    <label className="block text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
+                      <Download className="w-3 h-3 mr-1" /> LOAD TEMPLATE
+                    </label>
+                    <select
+                      value={selectedTemplateId}
+                      onChange={(e) => handleLoadTemplate(e.target.value)}
+                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                      style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
+                    >
+                      <option value="">-- Select a saved food --</option>
+                      {foodTemplates?.map(t => (
+                        <option key={t.id} value={t.id}>{t.name} ({t.calories} kcal)</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-mono text-[#A3A3A3] mb-1">
                     {activeTab === 'food' ? 'FOOD / MEAL NAME' : 'EXERCISE / ACTIVITY'}
@@ -438,7 +507,8 @@ export function NutritionView() {
                     type="text" 
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none"
+                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                    style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                     placeholder={activeTab === 'food' ? "e.g., Grilled Chicken Salad" : "e.g., 5km Run"}
                     required
                   />
@@ -451,7 +521,8 @@ export function NutritionView() {
                       type="number" 
                       value={calories}
                       onChange={(e) => setCalories(e.target.value)}
-                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none"
+                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                      style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                       placeholder="kcal"
                       required
                     />
@@ -465,7 +536,8 @@ export function NutritionView() {
                           type="number" 
                           value={protein}
                           onChange={(e) => setProtein(e.target.value)}
-                          className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none"
+                          className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                          style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                           placeholder="Optional"
                         />
                       </div>
@@ -475,7 +547,8 @@ export function NutritionView() {
                           type="number" 
                           value={carbs}
                           onChange={(e) => setCarbs(e.target.value)}
-                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none"
+                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                      style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                       placeholder="Optional"
                     />
                   </div>
@@ -485,7 +558,8 @@ export function NutritionView() {
                       type="number" 
                       value={fat}
                       onChange={(e) => setFat(e.target.value)}
-                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none"
+                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                      style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                       placeholder="Optional"
                     />
                   </div>
@@ -498,7 +572,8 @@ export function NutritionView() {
                       type="number" 
                       value={duration}
                       onChange={(e) => setDuration(e.target.value)}
-                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none"
+                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                      style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                       placeholder="Optional"
                     />
                   </div>
@@ -507,7 +582,8 @@ export function NutritionView() {
                     <select 
                       value={muscleGroup}
                       onChange={(e) => setMuscleGroup(e.target.value as any)}
-                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none"
+                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                      style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                     >
                       <option value="">None / Full Body</option>
                       <option value="chest">Chest</option>
@@ -525,13 +601,25 @@ export function NutritionView() {
           </>
         )}
 
-            <button
-              type="submit"
-              className="w-full mt-4 flex items-center justify-center space-x-2 bg-[#0A0A0A] border border-[#262626] hover:border-[#333] px-4 py-3 rounded-md transition-colors text-white font-mono text-sm"
-            >
-              <Plus className="w-4 h-4" style={{ color: themeColor }} />
-              <span>ADD LOG</span>
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="flex-1 mt-4 flex items-center justify-center space-x-2 bg-[#0A0A0A] border border-[#262626] hover:border-[#333] px-4 py-3 rounded-md transition-colors text-white font-mono text-sm"
+              >
+                <Plus className="w-4 h-4" style={{ color: themeColor }} />
+                <span>ADD LOG</span>
+              </button>
+              {activeTab === 'food' && (
+                <button
+                  type="button"
+                  onClick={handleSaveTemplate}
+                  className="mt-4 flex items-center justify-center space-x-2 bg-[#0A0A0A] border border-[#262626] hover:border-[#333] px-4 py-3 rounded-md transition-colors text-white font-mono text-sm"
+                  title="Save as Template"
+                >
+                  <Save className="w-4 h-4 text-indigo-400" />
+                </button>
+              )}
+            </div>
           </form>
         </div>
 

@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp } from '../db/db';
-import { cn } from '../lib/utils';
+import { cn, getRank } from '../lib/utils';
 import { Play, Square, Plus, ShieldAlert, Trash2 } from 'lucide-react';
 
 export function DungeonView() {
   const dungeons = useLiveQuery(() => db.dungeons.toArray());
+  const userStats = useLiveQuery(() => db.userStats.get(1));
   const [newTitle, setNewTitle] = useState('');
   const [newHealth, setNewHealth] = useState(100);
   const [newRewardCredits, setNewRewardCredits] = useState(500);
   const [newRewardXp, setNewRewardXp] = useState(500);
   const [activeDungeonId, setActiveDungeonId] = useState<number | null>(null);
   const [customDamage, setCustomDamage] = useState('');
+
+  const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
+  const { color: themeColor } = getRank(level);
 
   const handleAddDungeon = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,7 +109,7 @@ export function DungeonView() {
         </div>
         
         <div className="max-w-3xl w-full text-center space-y-12">
-          <div className="text-red-500 font-mono text-sm tracking-[0.5em] animate-pulse flex items-center justify-center">
+          <div className="text-red-500 font-mono text-sm tracking-[0.5em] flex items-center justify-center">
             <ShieldAlert className="w-4 h-4 mr-2" /> INSTANCE LOCK ACTIVE
           </div>
           
@@ -118,10 +122,10 @@ export function DungeonView() {
               <span>BOSS HP</span>
               <span>{dungeon.currentHealth} / {dungeon.totalHealth}</span>
             </div>
-            <div className="w-full h-4 bg-[#1A0505] border border-red-900/50 rounded-full overflow-hidden relative">
+            <div className="w-full h-4 bg-[#1A0505] border rounded-full overflow-hidden relative" style={{ borderColor: `${themeColor}80` }}>
               <div 
-                className="absolute top-0 left-0 h-full bg-red-600 transition-all duration-1000 ease-out"
-                style={{ width: `${healthPercent}%` }}
+                className="absolute top-0 left-0 h-full transition-all duration-1000 ease-out"
+                style={{ width: `${healthPercent}%`, backgroundColor: themeColor }}
               ></div>
             </div>
           </div>
@@ -132,7 +136,8 @@ export function DungeonView() {
                 key={dmg}
                 onClick={() => handleDamage(dungeon.id!, dungeon.currentHealth, dmg)}
                 disabled={dungeon.currentHealth === 0}
-                className="bg-[#141414] border border-[#262626] hover:border-red-500/50 text-white p-6 rounded-xl font-mono text-xl transition-all hover:bg-red-950/20 disabled:opacity-50"
+                className="bg-[#141414] border border-[#262626] text-white p-6 rounded-xl font-mono text-xl transition-all disabled:opacity-50"
+                style={{ borderColor: dungeon.currentHealth === 0 ? '#262626' : `${themeColor}50` }}
               >
                 -{dmg} HP
               </button>
@@ -144,12 +149,14 @@ export function DungeonView() {
               value={customDamage}
               onChange={(e) => setCustomDamage(e.target.value)}
               placeholder="Custom DMG"
-              className="bg-[#141414] border border-[#262626] rounded-md px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-red-500 w-40"
+              className="bg-[#141414] border border-[#262626] rounded-md px-4 py-3 text-white font-mono text-sm focus:outline-none focus:ring-1 w-40 transition-colors"
+              style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
             />
             <button
               onClick={() => handleDamage(dungeon.id!, dungeon.currentHealth, parseInt(customDamage) || 0)}
               disabled={dungeon.currentHealth === 0 || !customDamage}
-              className="bg-red-950/30 border border-red-900/50 hover:bg-red-900/50 text-red-500 px-6 py-3 rounded-md font-mono text-sm transition-colors disabled:opacity-50"
+              className="border px-6 py-3 rounded-md font-mono text-sm transition-colors disabled:opacity-50"
+              style={{ color: themeColor, borderColor: `${themeColor}80`, backgroundColor: `${themeColor}20` }}
             >
               DEAL DAMAGE
             </button>
@@ -185,6 +192,7 @@ export function DungeonView() {
                     <button 
                       onClick={() => setActiveDungeonId(dungeon.id!)}
                       className="bg-red-950/30 text-red-500 hover:bg-red-900/50 px-4 py-2 rounded-md font-mono text-sm flex items-center transition-colors border border-red-900/50"
+                      style={{ color: themeColor, borderColor: `${themeColor}80`, backgroundColor: `${themeColor}20` }}
                     >
                       <Play className="w-4 h-4 mr-2" /> ENTER
                     </button>
@@ -205,8 +213,8 @@ export function DungeonView() {
                   </div>
                   <div className="w-full h-2 bg-[#0A0A0A] rounded-full overflow-hidden">
                     <div 
-                      className="h-full bg-red-600 transition-all duration-500"
-                      style={{ width: `${(dungeon.currentHealth / dungeon.totalHealth) * 100}%` }}
+                      className="h-full transition-all duration-500"
+                      style={{ width: `${(dungeon.currentHealth / dungeon.totalHealth) * 100}%`, backgroundColor: themeColor }}
                     ></div>
                   </div>
                 </div>
@@ -272,7 +280,8 @@ export function DungeonView() {
                   type="text" 
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                  style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                   placeholder="e.g., Q3 Marketing Plan"
                 />
               </div>
@@ -282,7 +291,8 @@ export function DungeonView() {
                   type="number" 
                   value={newHealth}
                   onChange={(e) => setNewHealth(parseInt(e.target.value) || 100)}
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                  style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                   min="10"
                 />
               </div>
@@ -293,7 +303,8 @@ export function DungeonView() {
                     type="number" 
                     value={newRewardCredits}
                     onChange={(e) => setNewRewardCredits(parseInt(e.target.value) || 0)}
-                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                    style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                     min="0"
                   />
                 </div>
@@ -303,7 +314,8 @@ export function DungeonView() {
                     type="number" 
                     value={newRewardXp}
                     onChange={(e) => setNewRewardXp(parseInt(e.target.value) || 0)}
-                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                    style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                     min="0"
                   />
                 </div>

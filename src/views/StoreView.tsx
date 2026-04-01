@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { cn } from '../lib/utils';
+import { cn, getRank } from '../lib/utils';
 import { Coins, Package, Lock, Plus, ShoppingCart, Trash2 } from 'lucide-react';
 
 export function StoreView() {
@@ -16,6 +16,8 @@ export function StoreView() {
   const [isAdding, setIsAdding] = useState(false);
 
   const isPenalty = userStats?.penaltyActive;
+  const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
+  const { color: themeColor } = getRank(level);
 
   const handleBuy = async (item: any) => {
     if (!userStats || userStats.credits < item.cost || isPenalty) return;
@@ -100,19 +102,20 @@ export function StoreView() {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h3 className="text-xl font-mono text-white flex items-center">
-              <ShoppingCart className="w-5 h-5 mr-2 text-[#00F0FF]" />
+              <ShoppingCart className="w-5 h-5 mr-2" style={{ color: themeColor }} />
               REWARD SHOP
             </h3>
             <button
               onClick={() => setIsAdding(!isAdding)}
-              className="text-xs font-mono text-[#00F0FF] border border-[#00F0FF]/50 hover:bg-[#00F0FF]/10 px-3 py-1 rounded transition-colors flex items-center"
+              className="text-xs font-mono border px-3 py-1 rounded transition-colors flex items-center"
+              style={{ color: themeColor, borderColor: `${themeColor}80`, backgroundColor: `${themeColor}10` }}
             >
               <Plus className="w-3 h-3 mr-1" /> ADD ITEM
             </button>
           </div>
 
           {isAdding && (
-            <form onSubmit={handleAddItem} className="bg-[#141414] border border-[#00F0FF]/30 rounded-xl p-4 space-y-4 mb-4">
+            <form onSubmit={handleAddItem} className="bg-[#141414] border rounded-xl p-4 space-y-4 mb-4" style={{ borderColor: `${themeColor}50` }}>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-xs font-mono text-[#A3A3A3] mb-1">ITEM NAME</label>
@@ -120,7 +123,8 @@ export function StoreView() {
                     type="text" 
                     value={newItemName}
                     onChange={(e) => setNewItemName(e.target.value)}
-                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-3 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                    style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                     placeholder="e.g. Energy Drink"
                     required
                   />
@@ -131,7 +135,8 @@ export function StoreView() {
                     type="number" 
                     value={newItemCost}
                     onChange={(e) => setNewItemCost(e.target.value)}
-                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-3 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                    style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                     placeholder="100"
                     min="1"
                     required
@@ -142,7 +147,8 @@ export function StoreView() {
                   <select 
                     value={newItemAttr}
                     onChange={(e) => setNewItemAttr(e.target.value)}
-                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-3 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                    style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                   >
                     <option value="STR">STR</option>
                     <option value="AGI">AGI</option>
@@ -157,7 +163,8 @@ export function StoreView() {
                     type="number" 
                     value={newItemBoost}
                     onChange={(e) => setNewItemBoost(e.target.value)}
-                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF]"
+                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-3 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                    style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                     placeholder="5"
                     min="1"
                     required
@@ -174,7 +181,8 @@ export function StoreView() {
                 </button>
                 <button 
                   type="submit"
-                  className="bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/50 hover:bg-[#00F0FF]/30 px-4 py-2 rounded-md font-mono text-xs transition-colors"
+                  className="border px-4 py-2 rounded-md font-mono text-xs transition-colors"
+                  style={{ color: themeColor, borderColor: `${themeColor}80`, backgroundColor: `${themeColor}30` }}
                 >
                   CREATE ITEM
                 </button>
@@ -225,15 +233,15 @@ export function StoreView() {
         {/* Inventory */}
         <div className="space-y-6">
           <h3 className="text-xl font-mono text-white flex items-center">
-            <Package className="w-5 h-5 mr-2 text-purple-400" />
+            <Package className="w-5 h-5 mr-2" style={{ color: themeColor }} />
             INVENTORY
           </h3>
           <div className="grid gap-4">
             {inventory.map(item => (
               <div key={item.id} className={cn(
                 "bg-[#141414] border rounded-xl p-4 flex justify-between items-center transition-colors group",
-                item.equipped ? "border-[#00F0FF]/50 bg-[#00F0FF]/5" : "border-[#262626]"
-              )}>
+                item.equipped ? "bg-[#141414]" : "border-[#262626]"
+              )} style={item.equipped ? { borderColor: `${themeColor}50`, backgroundColor: `${themeColor}05` } : {}}>
                 <div>
                   <div className="flex items-center gap-2">
                     <h4 className="font-mono text-white">{item.name}</h4>
@@ -261,10 +269,9 @@ export function StoreView() {
                     onClick={() => handleEquip(item.id!, item.equipped)}
                     className={cn(
                       "px-4 py-2 rounded-md font-mono text-sm transition-colors border",
-                      item.equipped 
-                        ? "bg-[#00F0FF]/20 text-[#00F0FF] border-[#00F0FF]/50 hover:bg-[#00F0FF]/30" 
-                        : "bg-[#262626] text-white border-transparent hover:bg-[#333]"
+                      !item.equipped && "bg-[#262626] text-white border-transparent hover:bg-[#333]"
                     )}
+                    style={item.equipped ? { color: themeColor, borderColor: `${themeColor}50`, backgroundColor: `${themeColor}20` } : {}}
                   >
                     {item.equipped ? 'EQUIPPED' : 'EQUIP'}
                   </button>

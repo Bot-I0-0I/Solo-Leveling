@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp } from '../db/db';
-import { cn } from '../lib/utils';
-import { BookOpen, CheckCircle, Plus, Calendar } from 'lucide-react';
-import { format, startOfWeek } from 'date-fns';
+import { cn, getRank } from '../lib/utils';
+import { BookOpen, CheckCircle, Plus, Calendar, Wand2 } from 'lucide-react';
+import { format, startOfWeek, subDays, isAfter } from 'date-fns';
 
 export function ReviewView() {
   const userStats = useLiveQuery(() => db.userStats.get(1));
@@ -13,11 +13,22 @@ export function ReviewView() {
   const [challenges, setChallenges] = useState('');
   const [intentions, setIntentions] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  if (!reviews || !userStats) return <div className="animate-pulse">Loading Archives...</div>;
+  const pendingReview = reviews?.find(r => r.status === 'pending');
 
-  const pendingReview = reviews.find(r => r.status === 'pending');
+  React.useEffect(() => {
+    if (pendingReview && !accomplishments && !challenges && !intentions && !isGenerating) {
+      handleAutoGenerate();
+    }
+  }, [pendingReview]);
+
+  if (!reviews || !userStats) return <div className="opacity-80">Loading Archives...</div>;
+
   const completedReviews = reviews.filter(r => r.status === 'completed').reverse();
+  
+  const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
+  const { color: themeColor } = getRank(level);
 
   const handleInitializeReview = async () => {
     const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
@@ -31,6 +42,70 @@ export function ReviewView() {
         intentions: '',
         status: 'pending'
       });
+    }
+  };
+
+  const handleAutoGenerate = async () => {
+    setIsGenerating(true);
+    try {
+      const weekStart = pendingReview?.weekStartDate || format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+      const startDate = new Date(weekStart);
+      
+      // Fetch data for the week
+      const allQuests = await db.quests.toArray();
+      const completedQuests = allQuests.filter(q => q.completed && new Date(q.date) >= startDate);
+      const failedQuests = allQuests.filter(q => !q.completed && new Date(q.date) >= startDate);
+      
+      const allLogs = await db.nutritionLogs.toArray();
+      const weekLogs = allLogs.filter(l => new Date(l.date) >= startDate);
+      const workouts = weekLogs.filter(l => l.type === 'exercise');
+      
+      const allLedger = await db.ledger.toArray();
+      const weekLedger = allLedger.filter(l => new Date(l.date) >= startDate);
+      const income = weekLedger.filter(l => l.type === 'income').reduce((acc, l) => acc + l.amount, 0);
+      const expenses = weekLedger.filter(l => l.type === 'expense').reduce((acc, l) => acc + l.amount, 0);
+
+      // Generate text
+      let accText = `• Completed ${completedQuests.length} quests this week.\n`;
+      if (workouts.length > 0) {
+        accText += `• Logged ${workouts.length} workout sessions.\n`;
+      }
+      if (income > 0) {
+        accText += `• Earned $${income.toFixed(2)} in income.\n`;
+      }
+      if (completedQuests.length > 0) {
+        accText += `• Notable wins: ${completedQuests.slice(0, 3).map(q => q.title).join(', ')}.\n`;
+      }
+
+      let chalText = '';
+      if (failedQuests.length > 0) {
+        chalText += `• Missed ${failedQuests.length} quests (e.g., ${failedQuests.slice(0, 2).map(q => q.title).join(', ')}).\n`;
+      }
+      if (expenses > income) {
+        chalText += `• Expenses ($${expenses.toFixed(2)}) exceeded income ($${income.toFixed(2)}).\n`;
+      }
+      if (workouts.length < 3) {
+        chalText += `• Low physical activity (${workouts.length} sessions).\n`;
+      }
+      if (!chalText) {
+        chalText = "• No major challenges recorded in the system. Everything ran smoothly.\n";
+      }
+
+      let intText = `• Complete all daily recurring quests.\n`;
+      if (workouts.length < 3) {
+        intText += `• Increase physical activity to at least 3 sessions.\n`;
+      }
+      if (expenses > income) {
+        intText += `• Reduce unnecessary expenses to maintain positive cash flow.\n`;
+      }
+
+      setAccomplishments(accText);
+      setChallenges(chalText);
+      setIntentions(intText);
+    } catch (error) {
+      console.error("Error auto-generating review:", error);
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -70,12 +145,22 @@ export function ReviewView() {
       </header>
 
       {pendingReview ? (
-        <div className="bg-[#141414] border border-[#00F0FF]/50 rounded-xl p-6 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00F0FF] to-transparent opacity-50"></div>
-          <h3 className="text-xl font-mono text-white mb-6 flex items-center">
-            <BookOpen className="w-5 h-5 mr-2 text-[#00F0FF]" />
-            PENDING CALIBRATION: WEEK OF {pendingReview.weekStartDate}
-          </h3>
+        <div className="bg-[#141414] border rounded-xl p-6 relative overflow-hidden" style={{ borderColor: `${themeColor}80` }}>
+          <div className="absolute top-0 left-0 w-full h-1 opacity-50" style={{ background: `linear-gradient(to right, transparent, ${themeColor}, transparent)` }}></div>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <h3 className="text-xl font-mono text-white flex items-center">
+              <BookOpen className="w-5 h-5 mr-2" style={{ color: themeColor }} />
+              PENDING CALIBRATION: WEEK OF {pendingReview.weekStartDate}
+            </h3>
+            <button
+              onClick={handleAutoGenerate}
+              disabled={isGenerating}
+              className="flex items-center text-xs font-mono px-3 py-1.5 rounded bg-[#0A0A0A] border border-[#262626] hover:border-indigo-400 text-[#A3A3A3] hover:text-white transition-colors"
+            >
+              <Wand2 className="w-3 h-3 mr-1.5 text-indigo-400" />
+              {isGenerating ? 'GENERATING...' : 'AUTO-GENERATE'}
+            </button>
+          </div>
           
           <div className="space-y-6">
             <div>
@@ -83,7 +168,8 @@ export function ReviewView() {
               <textarea 
                 value={accomplishments}
                 onChange={(e) => setAccomplishments(e.target.value)}
-                className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-[#00F0FF] min-h-[100px]"
+                className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-3 text-white font-mono text-sm focus:outline-none focus:ring-1 min-h-[100px] transition-colors"
+                style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                 placeholder="Logged 5 workouts, finished the project..."
               />
             </div>
@@ -92,7 +178,8 @@ export function ReviewView() {
               <textarea 
                 value={challenges}
                 onChange={(e) => setChallenges(e.target.value)}
-                className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-red-500 min-h-[100px]"
+                className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-3 text-white font-mono text-sm focus:outline-none focus:ring-1 min-h-[100px] transition-colors"
+                style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                 placeholder="Poor sleep on Wednesday, distracted by social media..."
               />
             </div>
@@ -101,7 +188,8 @@ export function ReviewView() {
               <textarea 
                 value={intentions}
                 onChange={(e) => setIntentions(e.target.value)}
-                className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-purple-500 min-h-[100px]"
+                className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-3 text-white font-mono text-sm focus:outline-none focus:ring-1 min-h-[100px] transition-colors"
+                style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                 placeholder="Prioritize deep work in the mornings, hit 10k steps daily..."
               />
             </div>
@@ -109,9 +197,10 @@ export function ReviewView() {
             <button 
               onClick={handleSubmitReview}
               disabled={!accomplishments || !challenges || !intentions || isSubmitting}
-              className="w-full bg-[#262626] hover:bg-[#333] disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-md font-mono text-sm transition-colors flex items-center justify-center border border-[#262626] hover:border-[#00F0FF]/50"
+              className="w-full bg-[#262626] hover:bg-[#333] disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-md font-mono text-sm transition-colors flex items-center justify-center border border-[#262626]"
+              style={{ borderColor: accomplishments && challenges && intentions ? themeColor : undefined }}
             >
-              <CheckCircle className="w-4 h-4 mr-2 text-[#00F0FF]" /> 
+              <CheckCircle className="w-4 h-4 mr-2" style={{ color: themeColor }} /> 
               {isSubmitting ? 'SUBMITTING...' : 'SUBMIT CALIBRATION (+200 XP, +1 INT, +1 SEN)'}
             </button>
           </div>
@@ -127,7 +216,8 @@ export function ReviewView() {
           </div>
           <button 
             onClick={handleInitializeReview}
-            className="mt-4 bg-[#0A0A0A] border border-[#262626] hover:border-[#00F0FF]/50 text-[#A3A3A3] hover:text-white px-4 py-2 rounded-md font-mono text-xs transition-colors flex items-center"
+            className="mt-4 bg-[#0A0A0A] border border-[#262626] text-[#A3A3A3] hover:text-white px-4 py-2 rounded-md font-mono text-xs transition-colors flex items-center"
+            style={{ borderColor: themeColor }}
           >
             <Plus className="w-3 h-3 mr-2" /> FORCE GENERATE REVIEW
           </button>
@@ -150,7 +240,7 @@ export function ReviewView() {
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <h5 className="text-xs font-mono text-[#00F0FF] mb-2">ACCOMPLISHMENTS</h5>
+                  <h5 className="text-xs font-mono mb-2" style={{ color: themeColor }}>ACCOMPLISHMENTS</h5>
                   <p className="text-sm text-[#E5E5E5] whitespace-pre-wrap">{review.accomplishments}</p>
                 </div>
                 <div>
@@ -175,3 +265,4 @@ export function ReviewView() {
     </div>
   );
 }
+

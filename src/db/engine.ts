@@ -46,8 +46,9 @@ export function useSystemEngine() {
             lastResetDate: today
           });
           
-          // Duplicate yesterday's quests for today (simple routine engine)
-          const newQuests = yesterdayQuests.map(q => ({
+          // Duplicate yesterday's recurring quests for today
+          const recurringQuests = yesterdayQuests.filter(q => q.isRecurring);
+          const newQuests = recurringQuests.map(q => ({
             ...q,
             id: undefined,
             currentValue: 0,
@@ -55,7 +56,7 @@ export function useSystemEngine() {
             date: today
           }));
           if (newQuests.length > 0) {
-             await db.quests.bulkAdd(newQuests);
+             await db.quests.bulkAdd(newQuests as any);
           }
         }
       }
