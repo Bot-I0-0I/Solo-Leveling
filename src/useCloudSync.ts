@@ -4,6 +4,7 @@ import { db as localDb } from './db/db';
 import { db as cloudDb } from './firebase';
 import { collection, doc, getDoc, getDocs, setDoc, writeBatch, query, where } from 'firebase/firestore';
 import { toast } from 'sonner';
+import { getRank } from './lib/utils';
 
 export function useCloudSync() {
   const { user } = useAuth();
@@ -48,6 +49,19 @@ export function useCloudSync() {
       if (localStats) {
         const statsRef = doc(cloudDb, 'userStats', uid);
         batch.set(statsRef, { ...localStats, uid });
+
+        // Public Profile
+        const publicProfileRef = doc(cloudDb, 'publicProfiles', uid);
+        const level = Math.floor((localStats.xp || 0) / 1000) + 1;
+        const rank = getRank(level).rank;
+        batch.set(publicProfileRef, {
+          uid,
+          email: user?.email || '',
+          name: localStats.name || user?.email?.split('@')[0] || 'Unknown',
+          avatar: localStats.avatar || '',
+          level,
+          rank
+        });
       }
 
       // Quests

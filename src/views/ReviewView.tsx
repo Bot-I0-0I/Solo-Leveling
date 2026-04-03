@@ -28,7 +28,8 @@ export function ReviewView() {
   const completedReviews = reviews.filter(r => r.status === 'completed').reverse();
   
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
-  const { color: themeColor } = getRank(level);
+  const rankColor = getRank(level).color;
+  const themeColor = userStats?.selectedColor || rankColor;
 
   const handleInitializeReview = async () => {
     const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');

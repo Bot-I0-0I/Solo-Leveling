@@ -17,7 +17,8 @@ export function StoreView() {
 
   const isPenalty = userStats?.penaltyActive;
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
-  const { color: themeColor } = getRank(level);
+  const rankColor = getRank(level).color;
+  const themeColor = userStats?.selectedColor || rankColor;
 
   const handleBuy = async (item: any) => {
     if (!userStats || userStats.credits < item.cost || isPenalty) return;

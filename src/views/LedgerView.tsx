@@ -17,7 +17,8 @@ export function LedgerView() {
   const [chartType, setChartType] = useState<'pie' | 'bar' | 'line'>('pie');
 
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
-  const { color: themeColor } = getRank(level);
+  const rankColor = getRank(level).color;
+  const themeColor = userStats?.selectedColor || rankColor;
 
   const incomeCategories = ['Quest Reward', 'Salary', 'Investment', 'Other'];
   const expenseCategories = ['Shop Purchase', 'Food/Drink', 'Bills', 'Entertainment', 'Other'];

@@ -20,7 +20,8 @@ export function TacticalView() {
   if (!userStats) return <div className="opacity-80">Loading Tactical...</div>;
 
   const level = Math.floor((userStats.xp || 0) / 1000) + 1;
-  const { color: themeColor } = getRank(level);
+  const rankColor = getRank(level).color;
+  const themeColor = userStats?.selectedColor || rankColor;
 
   const handleLogMatch = async (e: React.FormEvent) => {
     e.preventDefault();

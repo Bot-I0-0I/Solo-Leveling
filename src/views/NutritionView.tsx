@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp, FoodTemplate } from '../db/db';
-import { Flame, Utensils, Activity, Plus, Trash2, Target, Dumbbell, Droplets, Beef, Wheat, Moon, Save, Download } from 'lucide-react';
+import { Flame, Utensils, Activity, Plus, Trash2, Target, Dumbbell, Droplets, Beef, Wheat, Moon, Save, Download, BarChart3 } from 'lucide-react';
 import { cn, getRank } from '../lib/utils';
-import { format, subDays } from 'date-fns';
+import { format, subDays, startOfDay, parseISO } from 'date-fns';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
 
 export function NutritionView() {
   const userStats = useLiveQuery(() => db.userStats.get(1));
@@ -16,7 +17,13 @@ export function NutritionView() {
     [today]
   );
 
-  const last7Days = Array.from({ length: 7 }, (_, i) => format(subDays(new Date(), i), 'yyyy-MM-dd'));
+  const last7Days = Array.from({ length: 7 }, (_, i) => format(subDays(new Date(), i), 'yyyy-MM-dd')).reverse();
+  
+  const weeklyLogs = useLiveQuery(
+    () => db.nutritionLogs.where('date').anyOf(last7Days).toArray(),
+    [last7Days]
+  );
+
   const recentExerciseLogs = useLiveQuery(
     () => db.nutritionLogs
       .where('date').anyOf(last7Days)
@@ -36,17 +43,26 @@ export function NutritionView() {
   const [muscleGroup, setMuscleGroup] = useState<'chest' | 'back' | 'legs' | 'arms' | 'shoulders' | 'core' | 'cardio' | ''>('');
   const [sleepHours, setSleepHours] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [weight, setWeight] = useState('');
+  const [bodyFat, setBodyFat] = useState('');
+  const [stressLevel, setStressLevel] = useState('');
 
   if (!userStats || !nutritionLogs) return <div className="opacity-80 p-4">Loading Metabolism...</div>;
 
   const level = Math.floor((userStats.xp || 0) / 1000) + 1;
-  const { color: themeColor } = getRank(level);
+  const rankColor = getRank(level).color;
+  const themeColor = userStats?.selectedColor || rankColor;
 
-  // Calculate BMR and TDEE
+  // Calculate BMR, TDEE, and BMI
   const latestLog = vesselLogs?.[vesselLogs.length - 1];
   const currentWeight = latestLog?.weight;
   
   let bmr = 0;
+  let bmi = null;
+  let bmiCategory = '';
+  let idealWeightMin = 0;
+  let idealWeightMax = 0;
+
   if (currentWeight && userStats.height && userStats.age && userStats.gender) {
     if (userStats.gender === 'male') {
       bmr = (10 * currentWeight) + (6.25 * userStats.height) - (5 * userStats.age) + 5;
@@ -55,6 +71,17 @@ export function NutritionView() {
     } else {
       bmr = (10 * currentWeight) + (6.25 * userStats.height) - (5 * userStats.age) - 78; // average
     }
+
+    const heightM = userStats.height / 100;
+    bmi = currentWeight / (heightM * heightM);
+    
+    if (bmi < 18.5) bmiCategory = 'Underweight';
+    else if (bmi < 25) bmiCategory = 'Optimal';
+    else if (bmi < 30) bmiCategory = 'Overweight';
+    else bmiCategory = 'Obese';
+
+    idealWeightMin = 18.5 * (heightM * heightM);
+    idealWeightMax = 24.9 * (heightM * heightM);
   }
 
   // Activity Multiplier
@@ -88,6 +115,29 @@ export function NutritionView() {
 
   const targetCalories = Math.round(tdee + goalModifier);
   
+  // Weekly Chart Data
+  const weeklyChartData = last7Days.map(date => {
+    const dayLogs = weeklyLogs?.filter(log => log.date === date && log.type === 'food') || [];
+    const protein = dayLogs.reduce((sum, log) => sum + (log.protein || 0), 0);
+    const carbs = dayLogs.reduce((sum, log) => sum + (log.carbs || 0), 0);
+    const fat = dayLogs.reduce((sum, log) => sum + (log.fat || 0), 0);
+    
+    return {
+      date: format(parseISO(date), 'EEE'),
+      fullDate: date,
+      calories: dayLogs.reduce((sum, log) => sum + (log.calories || 0), 0),
+      protein: protein,
+      carbs: carbs,
+      fat: fat,
+      proteinCals: protein * 4,
+      carbsCals: carbs * 4,
+      fatCals: fat * 9,
+    };
+  });
+
+  const totalWeeklyCalories = weeklyChartData.reduce((sum, day) => sum + day.calories, 0);
+  const avgWeeklyCalories = Math.round(totalWeeklyCalories / 7);
+
   // Target Macros
   let targetProtein = 0;
   let targetFat = 0;
@@ -215,6 +265,32 @@ export function NutritionView() {
     setSleepHours('');
   };
 
+  const handleLogVessel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!weight) return;
+
+    const existing = await db.vesselLogs.where('date').equals(today).first();
+
+    const logData = {
+      weight: parseFloat(weight),
+      bodyFat: bodyFat ? parseFloat(bodyFat) : undefined,
+      stressLevel: stressLevel ? parseInt(stressLevel) as 1|2|3|4|5 : undefined
+    };
+
+    if (existing) {
+      await db.vesselLogs.update(existing.id!, logData);
+    } else {
+      await db.vesselLogs.add({
+        date: today,
+        ...logData
+      });
+    }
+
+    setWeight('');
+    setBodyFat('');
+    setStressLevel('');
+  };
+
   // Calculate Muscle Load
   const muscleLoad: Record<string, number> = {
     chest: 0, back: 0, legs: 0, arms: 0, shoulders: 0, core: 0, cardio: 0
@@ -230,7 +306,10 @@ export function NutritionView() {
     });
   }
 
-  const maxLoad = Math.max(...Object.values(muscleLoad), 100); // Minimum scale of 100
+  const muscleChartData = Object.entries(muscleLoad).map(([muscle, load]) => ({
+    name: muscle.toUpperCase(),
+    load: Math.round(load)
+  }));
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -277,7 +356,7 @@ export function NutritionView() {
           </div>
 
           {/* Macros Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
             {/* Protein */}
             <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-3 md:p-4">
               <div className="flex justify-between items-center mb-2">
@@ -326,6 +405,58 @@ export function NutritionView() {
               </div>
             </div>
           </div>
+
+          {/* Weekly Chart */}
+          <div className="mt-8 pt-8 border-t border-[#262626]">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
+              <div>
+                <h3 className="text-lg font-mono text-white flex items-center">
+                  <BarChart3 className="w-5 h-5 mr-2" style={{ color: themeColor }} />
+                  WEEKLY NUTRITION ANALYSIS
+                </h3>
+                <p className="text-[10px] font-mono text-[#A3A3A3] mt-1">
+                  Total: {totalWeeklyCalories} kcal | Avg: {avgWeeklyCalories} kcal/day
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-4 text-[10px] font-mono">
+                <div className="flex items-center gap-1"><div className="w-2 h-2 bg-[#3B82F6] rounded-full"></div> PROTEIN</div>
+                <div className="flex items-center gap-1"><div className="w-2 h-2 bg-[#10B981] rounded-full"></div> CARBS</div>
+                <div className="flex items-center gap-1"><div className="w-2 h-2 bg-[#F59E0B] rounded-full"></div> FAT</div>
+              </div>
+            </div>
+            <div className="h-[250px] w-full min-h-[250px]">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                <BarChart data={weeklyChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                  <XAxis 
+                    dataKey="date" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#A3A3A3', fontSize: 10, fontFamily: 'monospace' }} 
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#A3A3A3', fontSize: 10, fontFamily: 'monospace' }} 
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#141414', border: '1px solid #262626', borderRadius: '8px', fontFamily: 'monospace' }}
+                    itemStyle={{ fontSize: '12px' }}
+                    cursor={{ fill: '#262626', opacity: 0.4 }}
+                    formatter={(value: number, name: string) => {
+                      if (name === 'proteinCals') return [`${value} kcal`, 'Protein'];
+                      if (name === 'carbsCals') return [`${value} kcal`, 'Carbs'];
+                      if (name === 'fatCals') return [`${value} kcal`, 'Fat'];
+                      return [value, name];
+                    }}
+                  />
+                  <Bar dataKey="proteinCals" name="Protein" stackId="a" fill="#3B82F6" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="carbsCals" name="Carbs" stackId="a" fill="#10B981" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="fatCals" name="Fat" stackId="a" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 text-center">
@@ -364,24 +495,25 @@ export function NutritionView() {
           <Dumbbell className="w-5 h-5 mr-2" style={{ color: themeColor }} />
           MUSCLE LOAD (7-DAY ESTIMATION)
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-          {Object.entries(muscleLoad).map(([muscle, load]) => {
-            const percentage = Math.min((load / maxLoad) * 100, 100);
-            return (
-              <div key={muscle} className="flex items-center">
-                <div className="w-24 text-xs font-mono text-[#A3A3A3] uppercase">{muscle}</div>
-                <div className="flex-1 h-2 bg-[#0A0A0A] rounded-full overflow-hidden border border-[#262626]">
-                  <div 
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ 
-                      width: `${percentage}%`,
-                      backgroundColor: percentage > 75 ? '#ef4444' : percentage > 40 ? '#eab308' : themeColor
-                    }}
-                  />
-                </div>
-              </div>
-            );
-          })}
+        <div className="h-[250px] w-full min-h-[250px]">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+            <BarChart data={muscleChartData} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#262626" horizontal={false} />
+              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#A3A3A3', fontSize: 10, fontFamily: 'monospace' }} />
+              <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#A3A3A3', fontSize: 10, fontFamily: 'monospace' }} width={80} />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#141414', border: '1px solid #262626', borderRadius: '8px', fontFamily: 'monospace' }}
+                itemStyle={{ fontSize: '12px', color: '#fff' }}
+                cursor={{ fill: '#262626', opacity: 0.4 }}
+                formatter={(value: number) => [`${value} Load`, 'Strain']}
+              />
+              <Bar dataKey="load" radius={[0, 4, 4, 0]}>
+                {muscleChartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.load > 75 ? '#ef4444' : entry.load > 40 ? '#eab308' : themeColor} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
@@ -474,10 +606,15 @@ export function NutritionView() {
                   type="number" 
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none"
+                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none mb-3"
                   placeholder="e.g., 250"
                   required
                 />
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setAmount('250')} className="flex-1 bg-[#1A1A1A] hover:bg-[#262626] border border-[#333] text-[#A3A3A3] py-2 rounded font-mono text-xs transition-colors">+250ml</button>
+                  <button type="button" onClick={() => setAmount('500')} className="flex-1 bg-[#1A1A1A] hover:bg-[#262626] border border-[#333] text-[#A3A3A3] py-2 rounded font-mono text-xs transition-colors">+500ml</button>
+                  <button type="button" onClick={() => setAmount('1000')} className="flex-1 bg-[#1A1A1A] hover:bg-[#262626] border border-[#333] text-[#A3A3A3] py-2 rounded font-mono text-xs transition-colors">+1L</button>
+                </div>
               </div>
             ) : (
               <>
@@ -675,6 +812,128 @@ export function NutritionView() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Vessel Tracker & Growth Analysis */}
+      <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
+        <h3 className="text-lg font-mono text-white mb-4 flex items-center">
+          <Activity className="w-5 h-5 mr-2 text-blue-400" />
+          VESSEL TRACKER
+        </h3>
+        <p className="text-sm text-[#A3A3A3] mb-6">Log your physical capacity metrics and monitor vessel integrity over time.</p>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 h-[300px] min-h-[250px] bg-[#0A0A0A] border border-[#262626] rounded-lg p-4">
+            {vesselLogs && vesselLogs.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                <LineChart data={vesselLogs}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                  <XAxis dataKey="date" stroke="#A3A3A3" fontSize={10} tickFormatter={(val) => val.substring(5)} />
+                  <YAxis yAxisId="left" stroke="#A3A3A3" fontSize={10} domain={['dataMin - 2', 'dataMax + 2']} />
+                  <YAxis yAxisId="right" orientation="right" stroke="#A3A3A3" fontSize={10} domain={[0, 'dataMax + 5']} hide />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#141414', borderColor: '#262626', color: '#fff' }}
+                    itemStyle={{ color: themeColor }}
+                  />
+                  <Line yAxisId="left" type="monotone" dataKey="weight" name="Weight (kg)" stroke={themeColor} strokeWidth={2} dot={{ r: 4, fill: themeColor }} activeDot={{ r: 6 }} />
+                  <Line yAxisId="right" type="monotone" dataKey="bodyFat" name="Body Fat %" stroke="#FFD700" strokeWidth={2} dot={{ r: 4, fill: '#FFD700' }} />
+                  <Line yAxisId="right" type="monotone" dataKey="stressLevel" name="Stress (1-5)" stroke="#ef4444" strokeWidth={2} dot={{ r: 4, fill: '#ef4444' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-[#A3A3A3] font-mono text-sm">
+                No vessel data logged yet.
+              </div>
+            )}
+          </div>
+
+          <div>
+            <form onSubmit={handleLogVessel} className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono text-[#A3A3A3] mb-1">WEIGHT (KG)</label>
+                <input 
+                  type="number" 
+                  step="0.1"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  placeholder="e.g., 75.5" 
+                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                  style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-[#A3A3A3] mb-1">BODY FAT % (OPTIONAL)</label>
+                <input 
+                  type="number" 
+                  step="0.1"
+                  value={bodyFat}
+                  onChange={(e) => setBodyFat(e.target.value)}
+                  placeholder="e.g., 15.2" 
+                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                  style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-[#A3A3A3] mb-1">STRESS (1-5)</label>
+                <input 
+                  type="number" 
+                  min="1"
+                  max="5"
+                  value={stressLevel}
+                  onChange={(e) => setStressLevel(e.target.value)}
+                  placeholder="1 = Low" 
+                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                  style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
+                />
+              </div>
+              <button type="submit" className="w-full bg-[#262626] hover:bg-[#333] text-white px-4 py-3 rounded-md font-mono text-sm transition-colors flex items-center justify-center mt-2">
+                <Plus className="w-4 h-4 mr-2" /> LOG VESSEL DATA
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* Growth Analysis Panel */}
+        {bmi && bmr && tdee && (
+          <div className="mt-6 pt-6 border-t border-[#262626] grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-4">
+              <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
+                <Activity className="w-3 h-3 mr-1" /> BMI INDEX
+              </div>
+              <div className="text-2xl font-mono text-white mb-1">{bmi.toFixed(1)}</div>
+              <div className={cn(
+                "text-xs font-mono px-2 py-1 rounded inline-block",
+                bmiCategory === 'Optimal' ? "bg-green-950/30 text-green-500 border border-green-900/50" :
+                bmiCategory === 'Underweight' ? "bg-blue-950/30 text-blue-500 border border-blue-900/50" :
+                "bg-red-950/30 text-red-500 border border-red-900/50"
+              )}>
+                {bmiCategory.toUpperCase()}
+              </div>
+            </div>
+            
+            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-4">
+              <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
+                <Flame className="w-3 h-3 mr-1" /> METABOLIC RATE (TDEE)
+              </div>
+              <div className="text-2xl font-mono text-white mb-1">{Math.round(tdee)} <span className="text-sm text-[#A3A3A3]">kcal/day</span></div>
+              <div className="text-xs font-mono text-[#A3A3A3] mt-2">
+                Base BMR: <span className="text-white">{Math.round(bmr)} kcal</span>
+              </div>
+            </div>
+
+            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-4">
+              <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
+                <Target className="w-3 h-3 mr-1" /> OPTIMAL CAPACITY
+              </div>
+              <div className="text-2xl font-mono text-white mb-1">
+                {idealWeightMin.toFixed(1)} - {idealWeightMax.toFixed(1)} <span className="text-sm text-[#A3A3A3]">kg</span>
+              </div>
+              <div className="text-xs font-mono text-[#A3A3A3] mt-2">
+                Target range for maximum physical efficiency.
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

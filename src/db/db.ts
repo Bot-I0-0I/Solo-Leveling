@@ -23,6 +23,8 @@ export interface UserStats {
   role?: string;
   uiTheme?: string;
   backgroundImage?: string;
+  useRankTheme?: boolean;
+  selectedColor?: string;
 }
 
 export interface Quest {
@@ -308,10 +310,12 @@ export async function addXp(amount: number, attribute?: 'STR' | 'VIT' | 'AGI' | 
   }
 
   if (levelsGained > 0) {
-    // Import getRank dynamically or just use the logic here. Actually, we can import it at the top.
-    // Wait, I need to add the import at the top of the file.
     const { getRank } = await import('../lib/utils');
     const { color: themeColor } = getRank(newLevel);
+    
+    // Use the store to trigger the modal
+    const { useStore } = await import('../store/useStore');
+    useStore.getState().setLevelUpModal(newLevel);
     
     toast.success(`LEVEL UP! You reached level ${newLevel}.`, {
       style: {

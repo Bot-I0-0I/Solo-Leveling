@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp } from '../db/db';
 import { cn, getRank } from '../lib/utils';
-import { AlertTriangle, CheckCircle, Circle, Plus, Trash2, FastForward, Repeat, Save } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Circle, Plus, Trash2, FastForward, Repeat, Save, Trophy } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 export function QuestView() {
   const userStats = useLiveQuery(() => db.userStats.get(1));
@@ -18,7 +20,8 @@ export function QuestView() {
 
   const isPenalty = userStats?.penaltyActive;
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
-  const { color: themeColor } = getRank(level);
+  const rankColor = getRank(level).color;
+  const themeColor = userStats?.selectedColor || rankColor;
 
   const handleComplete = async (questId: number, currentVal: number, targetVal: number, attr: string, baseReward: number, type: string, maxOut: boolean = false) => {
     if (currentVal >= targetVal) return; // Already done
@@ -34,6 +37,12 @@ export function QuestView() {
         const xpGain = baseReward;
         
         await addXp(xpGain, attr as any);
+
+        toast.success(`Quest Completed! +${xpGain} XP gained.`, {
+          icon: <Trophy className="w-4 h-4 text-yellow-400" />,
+          description: `Attribute: ${attr}`,
+          duration: 3000,
+        });
 
         // If it was a penalty quest, clear penalty state
         if (type === 'penalty') {
@@ -254,31 +263,70 @@ const QuestCard: React.FC<{ quest: any, themeColor: string, onProgress: () => vo
   const progress = (quest.currentValue / quest.targetValue) * 100;
   
   return (
-    <div className={cn(
-      "bg-[#141414] border rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all group",
-      quest.completed ? "border-green-900/50 opacity-70" : quest.type === 'penalty' ? "border-red-900" : "border-[#262626] hover:border-[#333]"
-    )}>
-      <div className="flex items-center gap-4 flex-1 w-full">
+    <motion.div 
+      layout
+      className={cn(
+        "bg-[#141414] border rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all group relative overflow-hidden",
+        quest.completed ? "border-green-900/50 opacity-70" : quest.type === 'penalty' ? "border-red-900" : "border-[#262626] hover:border-[#333]"
+      )}
+    >
+      {quest.completed && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="absolute inset-0 bg-green-500/5 pointer-events-none"
+        />
+      )}
+      <div className="flex items-center gap-4 flex-1 w-full relative z-10">
         <button 
           onClick={onProgress}
           disabled={quest.completed}
           className={cn(
-            "flex-shrink-0 transition-colors",
+            "flex-shrink-0 transition-all duration-300 transform active:scale-90",
             quest.completed ? "text-green-500" : quest.type === 'penalty' ? "text-red-500 hover:text-red-400" : "text-[#A3A3A3]"
           )}
           style={!quest.completed && quest.type !== 'penalty' ? { color: themeColor } : {}}
         >
-          {quest.completed ? <CheckCircle className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
+          <AnimatePresence mode="wait">
+            {quest.completed ? (
+              <motion.div
+                key="completed"
+                initial={{ scale: 0, rotate: -45 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 15 }}
+              >
+                <CheckCircle className="w-6 h-6" />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="pending"
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+              >
+                <Circle className="w-6 h-6" />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </button>
         <div className="flex-1 w-full">
           <div className="flex justify-between items-center mb-2">
-            <h4 className={cn("font-mono text-sm sm:text-base flex items-center gap-2", quest.completed && "line-through text-[#A3A3A3]")}>
-              {quest.title}
-              {quest.isRecurring && <Repeat className="w-3 h-3 text-[#A3A3A3]" />}
-            </h4>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-[#A3A3A3] bg-[#0A0A0A] px-2 py-1 rounded border border-[#262626]">
-                +{quest.baseReward} XP [{quest.attribute}]
+              <h4 className={cn(
+                "font-mono text-sm sm:text-base transition-all duration-300", 
+                quest.completed && "line-through text-[#A3A3A3]"
+              )}>
+                {quest.title}
+              </h4>
+              {quest.isRecurring && (
+                <div className="flex items-center px-1 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20" title="Recurring Quest">
+                  <Repeat className="w-3 h-3 text-indigo-400" />
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono text-[#A3A3A3] bg-[#0A0A0A] px-2 py-1 rounded border border-[#262626] flex items-center">
+                <Trophy className="w-3 h-3 mr-1 text-yellow-500/50" />
+                {quest.baseReward} XP [{quest.attribute}]
               </span>
               {!quest.completed && quest.targetValue > 1 && (
                 <button 
@@ -302,19 +350,21 @@ const QuestCard: React.FC<{ quest: any, themeColor: string, onProgress: () => vo
             </div>
           </div>
           <div className="w-full bg-[#0A0A0A] h-1.5 rounded-full overflow-hidden">
-            <div 
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
               className={cn(
-                "h-full transition-all duration-500",
+                "h-full transition-colors duration-500",
                 quest.type === 'penalty' ? "bg-red-500" : ""
               )}
-              style={{ width: `${progress}%`, backgroundColor: quest.type !== 'penalty' ? themeColor : undefined }}
-            ></div>
+              style={{ backgroundColor: quest.type !== 'penalty' ? themeColor : undefined }}
+            ></motion.div>
           </div>
           <div className="text-right text-xs font-mono text-[#A3A3A3] mt-1">
             {quest.currentValue} / {quest.targetValue}
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
-}
+};

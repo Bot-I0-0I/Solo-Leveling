@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { cn, getRank } from '../lib/utils';
+import { cn, getRank, RANK_TIERS } from '../lib/utils';
 import { Settings, User, Palette, Activity, Save, Upload, Download, Database, Trash2, Moon, Sun, AlertTriangle, Cloud, RefreshCw } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useAuth } from '../AuthContext';
@@ -15,7 +15,8 @@ export function SettingsView() {
   const { isSyncing, lastSync, forceSync } = useCloudSync();
   
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
-  const { color: themeColor } = getRank(level);
+  const rankColor = getRank(level).color;
+  const themeColor = userStats?.selectedColor || rankColor;
 
   const [name, setName] = useState('');
   const [height, setHeight] = useState('');
@@ -26,6 +27,7 @@ export function SettingsView() {
   const [avatar, setAvatar] = useState('');
   const [role, setRole] = useState('Player');
   const [uiTheme, setUiTheme] = useState('default');
+  const [selectedColor, setSelectedColor] = useState('');
   const [backgroundImage, setBackgroundImage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -40,6 +42,7 @@ export function SettingsView() {
       setAvatar(userStats.avatar || '');
       setRole(userStats.role || 'Player');
       setUiTheme(userStats.uiTheme || 'default');
+      setSelectedColor(userStats.selectedColor || '');
       setBackgroundImage(userStats.backgroundImage || '');
     }
   }, [userStats]);
@@ -82,6 +85,7 @@ export function SettingsView() {
       avatar,
       role,
       uiTheme,
+      selectedColor,
       backgroundImage
     });
     if (user) {
@@ -347,6 +351,22 @@ export function SettingsView() {
           </p>
           
           <div className="mt-4">
+            <label className="block text-xs font-mono text-[#A3A3A3] mb-1">ACCENT COLOR</label>
+            <select 
+              value={selectedColor}
+              onChange={(e) => setSelectedColor(e.target.value)}
+              className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+              style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
+            >
+              <option value="">Auto (Current Rank)</option>
+              <option value="#00F0FF">System Default (Cyan)</option>
+              {RANK_TIERS.filter(t => level >= t.minLevel).map(t => (
+                <option key={t.rank} value={t.color}>{t.rank} ({t.color})</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="mt-4">
             <label className="block text-xs font-mono text-[#A3A3A3] mb-1">UI THEME (RANK UNLOCKS)</label>
             <select 
               value={uiTheme}
@@ -355,12 +375,7 @@ export function SettingsView() {
               style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
             >
               <option value="default">Default (Standard UI)</option>
-              {level >= 40 && <option value="elite">Elite UI (Rank Elite+)</option>}
-              {level >= 50 && <option value="s">S-Class UI (Rank S+)</option>}
-              {level >= 60 && <option value="s_plus">S+ Class UI (Rank S++)</option>}
-              {level >= 70 && <option value="ss">SS-Class UI (Rank SS+)</option>}
-              {level >= 80 && <option value="sss">SSS-Class UI (Rank SSS+)</option>}
-              {level >= 90 && <option value="national">National Hunter UI (Rank National+)</option>}
+              {level >= 50 && <option value="s_class">S-Class UI (Rank S+)</option>}
               {level >= 100 && <option value="monarch">Monarch UI (Rank Monarch)</option>}
             </select>
           </div>
@@ -416,6 +431,15 @@ export function SettingsView() {
                 <RefreshCw className={cn("w-4 h-4 mr-2", isSyncing && "animate-spin")} /> 
                 {isSyncing ? 'SYNCING...' : 'FORCE CLOUD SYNC'}
               </button>
+              
+              <div className="mt-4 p-4 bg-blue-900/10 border border-blue-900/30 rounded-lg">
+                <h4 className="text-xs font-mono text-blue-400 mb-2 flex items-center">
+                  <AlertTriangle className="w-3 h-3 mr-1" /> FIREBASE DOMAIN ISSUE?
+                </h4>
+                <p className="text-[10px] text-[#A3A3A3] font-mono leading-relaxed">
+                  If you see "Invalid website or domain" on GitHub Pages, you must add your GitHub Pages URL (e.g., <code className="text-blue-300">username.github.io</code>) to the <strong>Authorized Domains</strong> list in your Firebase Console under <code className="text-blue-300">Authentication &gt; Settings</code>.
+                </p>
+              </div>
             </div>
           )}
 

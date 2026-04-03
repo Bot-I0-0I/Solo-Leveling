@@ -15,7 +15,8 @@ export function DungeonView() {
   const [customDamage, setCustomDamage] = useState('');
 
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
-  const { color: themeColor } = getRank(level);
+  const rankColor = getRank(level).color;
+  const themeColor = userStats?.selectedColor || rankColor;
 
   const handleAddDungeon = async (e: React.FormEvent) => {
     e.preventDefault();

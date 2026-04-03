@@ -15,7 +15,8 @@ export function SchedulerView() {
   const [xpReward, setXpReward] = useState(50);
 
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
-  const { color: themeColor } = getRank(level);
+  const rankColor = getRank(level).color;
+  const themeColor = userStats?.selectedColor || rankColor;
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();

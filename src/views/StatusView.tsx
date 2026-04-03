@@ -21,11 +21,9 @@ export function StatusView() {
   const weeklyReview = useLiveQuery(() => db.weeklyReviews.where('weekStartDate').equals(weekStart).first());
 
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
-  const { rank, color: themeColor } = getRank(level);
+  const { rank, color: rankColor } = getRank(level);
+  const themeColor = userStats?.selectedColor || rankColor;
 
-  const [weight, setWeight] = React.useState('');
-  const [bodyFat, setBodyFat] = React.useState('');
-  const [stressLevel, setStressLevel] = React.useState('');
   const [notes, setNotes] = React.useState(userStats?.notes || '');
 
   React.useEffect(() => {
@@ -36,33 +34,6 @@ export function StatusView() {
 
   const handleSaveNotes = async () => {
     await db.userStats.update(1, { notes });
-  };
-
-  const handleLogVessel = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!weight) return;
-
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const existing = await db.vesselLogs.where('date').equals(today).first();
-
-    const logData = {
-      weight: parseFloat(weight),
-      bodyFat: bodyFat ? parseFloat(bodyFat) : undefined,
-      stressLevel: stressLevel ? parseInt(stressLevel) as 1|2|3|4|5 : undefined
-    };
-
-    if (existing) {
-      await db.vesselLogs.update(existing.id!, logData);
-    } else {
-      await db.vesselLogs.add({
-        date: today,
-        ...logData
-      });
-    }
-
-    setWeight('');
-    setBodyFat('');
-    setStressLevel('');
   };
 
   if (!userStats) return <div className="opacity-80">Loading System Data...</div>;
@@ -114,44 +85,33 @@ export function StatusView() {
   const todayExpense = todayLedger?.filter(l => l.type === 'expense').reduce((sum, l) => sum + l.amount, 0) || 0;
   const netCredits = todayIncome - todayExpense;
 
-  const latestLog = vesselLogs?.[vesselLogs.length - 1];
-  const currentWeight = latestLog?.weight;
-  
-  let bmi = null;
-  let bmr = null;
-  let bmiCategory = '';
-  let idealWeightMin = 0;
-  let idealWeightMax = 0;
+  // Recovery Status Calculation
+  const last7DaysLogs = vesselLogs?.filter(log => {
+    const logDate = new Date(log.date);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return logDate >= sevenDaysAgo;
+  }) || [];
 
-  if (currentWeight && userStats.height && userStats.age) {
-    const heightM = userStats.height / 100;
-    bmi = currentWeight / (heightM * heightM);
-    
-    if (bmi < 18.5) bmiCategory = 'Underweight';
-    else if (bmi < 25) bmiCategory = 'Optimal';
-    else if (bmi < 30) bmiCategory = 'Overweight';
-    else bmiCategory = 'Obese';
+  const sleepLogs = last7DaysLogs.filter(l => l.sleepHours !== undefined);
+  const avgSleep = sleepLogs.length > 0 
+    ? sleepLogs.reduce((sum, l) => sum + (l.sleepHours || 0), 0) / sleepLogs.length 
+    : 0;
 
-    // Mifflin-St Jeor Equation
-    if (userStats.gender === 'female') {
-      bmr = (10 * currentWeight) + (6.25 * userStats.height) - (5 * userStats.age) - 161;
+  let recoveryStatus = 'Unknown';
+  let recoveryColor = 'text-[#A3A3A3]';
+  if (avgSleep > 0) {
+    if (avgSleep >= 7 && avgSleep <= 9) {
+      recoveryStatus = 'Optimal';
+      recoveryColor = 'text-green-400';
+    } else if (avgSleep >= 6) {
+      recoveryStatus = 'Fair';
+      recoveryColor = 'text-yellow-400';
     } else {
-      bmr = (10 * currentWeight) + (6.25 * userStats.height) - (5 * userStats.age) + 5;
+      recoveryStatus = 'Poor';
+      recoveryColor = 'text-red-400';
     }
-
-    idealWeightMin = 18.5 * (heightM * heightM);
-    idealWeightMax = 24.9 * (heightM * heightM);
   }
-
-  // Calculate TDEE based on activity level
-  let activityMultiplier = 1.2; // sedentary
-  switch (userStats?.activityLevel) {
-    case 'light': activityMultiplier = 1.375; break;
-    case 'moderate': activityMultiplier = 1.55; break;
-    case 'active': activityMultiplier = 1.725; break;
-    case 'very_active': activityMultiplier = 1.9; break;
-  }
-  const tdee = bmr ? bmr * activityMultiplier : null;
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -208,7 +168,7 @@ export function StatusView() {
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00F0FF] to-transparent opacity-50"></div>
           <div className="text-sm font-mono text-[#A3A3A3] mb-2">CURRENT RANK</div>
           <div 
-            className="text-6xl md:text-8xl font-black font-mono leading-none mb-4"
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black font-mono leading-none mb-4 text-center px-2"
             style={{ color: themeColor, textShadow: `0 0 10px ${themeColor}40` }}
           >
             {rank}
@@ -225,7 +185,7 @@ export function StatusView() {
         </div>
 
         {/* Radar Chart */}
-        <div className="col-span-1 md:col-span-2 bg-[#141414] border border-[#262626] rounded-xl p-6 h-[300px]">
+        <div className="col-span-1 md:col-span-2 bg-[#141414] border border-[#262626] rounded-xl p-6 h-[350px] min-h-[300px]">
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
               <PolarGrid stroke="#262626" />
@@ -257,134 +217,6 @@ export function StatusView() {
         ))}
       </div>
 
-      {/* Vessel Tracker */}
-      <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
-        <h3 className="text-lg font-mono text-white mb-4 flex items-center">
-          <Heart className="w-5 h-5 mr-2 text-red-400" />
-          VESSEL TRACKER
-        </h3>
-        <p className="text-sm text-[#A3A3A3] mb-6">Log your physical capacity metrics and monitor vessel integrity over time.</p>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 h-[250px] bg-[#0A0A0A] border border-[#262626] rounded-lg p-4">
-            {vesselLogs && vesselLogs.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                <LineChart data={vesselLogs}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
-                  <XAxis dataKey="date" stroke="#A3A3A3" fontSize={10} tickFormatter={(val) => val.substring(5)} />
-                  <YAxis yAxisId="left" stroke="#A3A3A3" fontSize={10} domain={['dataMin - 2', 'dataMax + 2']} />
-                  <YAxis yAxisId="right" orientation="right" stroke="#A3A3A3" fontSize={10} domain={[0, 'dataMax + 5']} hide />
-                  <RechartsTooltip 
-                    contentStyle={{ backgroundColor: '#141414', borderColor: '#262626', color: '#fff' }}
-                    itemStyle={{ color: themeColor }}
-                  />
-                  <Line yAxisId="left" type="monotone" dataKey="weight" name="Weight (kg)" stroke={themeColor} strokeWidth={2} dot={{ r: 4, fill: themeColor }} activeDot={{ r: 6 }} />
-                  <Line yAxisId="right" type="monotone" dataKey="bodyFat" name="Body Fat %" stroke="#FFD700" strokeWidth={2} dot={{ r: 4, fill: '#FFD700' }} />
-                  <Line yAxisId="right" type="monotone" dataKey="stressLevel" name="Stress (1-5)" stroke="#ef4444" strokeWidth={2} dot={{ r: 4, fill: '#ef4444' }} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-[#A3A3A3] font-mono text-sm">
-                No vessel data logged yet.
-              </div>
-            )}
-          </div>
-
-          <div>
-            <form onSubmit={handleLogVessel} className="space-y-4">
-              <div>
-                <label className="block text-xs font-mono text-[#A3A3A3] mb-1">WEIGHT (KG)</label>
-                <input 
-                  type="number" 
-                  step="0.1"
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                  placeholder="e.g., 75.5" 
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
-                  style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-mono text-[#A3A3A3] mb-1">BODY FAT % (OPTIONAL)</label>
-                <input 
-                  type="number" 
-                  step="0.1"
-                  value={bodyFat}
-                  onChange={(e) => setBodyFat(e.target.value)}
-                  placeholder="e.g., 15.2" 
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
-                  style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-mono text-[#A3A3A3] mb-1">STRESS (1-5)</label>
-                <input 
-                  type="number" 
-                  min="1"
-                  max="5"
-                  value={stressLevel}
-                  onChange={(e) => setStressLevel(e.target.value)}
-                  placeholder="1 = Low" 
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
-                  style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
-                />
-              </div>
-              <button type="submit" className="w-full bg-[#262626] hover:bg-[#333] text-white px-4 py-3 rounded-md font-mono text-sm transition-colors flex items-center justify-center mt-2">
-                <Plus className="w-4 h-4 mr-2" /> LOG VESSEL DATA
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* Growth Analysis Panel */}
-        {bmi && bmr && tdee && (
-          <div className="mt-6 pt-6 border-t border-[#262626] grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-4">
-              <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
-                <Activity className="w-3 h-3 mr-1" /> BMI INDEX
-              </div>
-              <div className="text-2xl font-mono text-white mb-1">{bmi.toFixed(1)}</div>
-              <div className={cn(
-                "text-xs font-mono px-2 py-1 rounded inline-block",
-                bmiCategory === 'Optimal' ? "bg-green-950/30 text-green-500 border border-green-900/50" :
-                bmiCategory === 'Underweight' ? "bg-blue-950/30 text-blue-500 border border-blue-900/50" :
-                "bg-red-950/30 text-red-500 border border-red-900/50"
-              )}>
-                {bmiCategory.toUpperCase()}
-              </div>
-            </div>
-            
-            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-4">
-              <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
-                <Zap className="w-3 h-3 mr-1" /> METABOLIC RATE (TDEE)
-              </div>
-              <div className="text-2xl font-mono text-white mb-1">{Math.round(tdee)} <span className="text-sm text-[#A3A3A3]">kcal/day</span></div>
-              <div className="text-xs font-mono text-[#A3A3A3] mt-2">
-                Base BMR: <span className="text-white">{Math.round(bmr)} kcal</span>
-              </div>
-            </div>
-
-            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-4">
-              <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
-                <TrendingUp className="w-3 h-3 mr-1" /> OPTIMAL CAPACITY
-              </div>
-              <div className="text-2xl font-mono text-white mb-1">
-                {idealWeightMin.toFixed(1)} - {idealWeightMax.toFixed(1)} <span className="text-sm text-[#A3A3A3]">kg</span>
-              </div>
-              <div className="text-xs font-mono text-[#A3A3A3] mt-2">
-                Target range for maximum physical efficiency.
-              </div>
-            </div>
-          </div>
-        )}
-        {!bmi && (
-          <div className="mt-6 pt-6 border-t border-[#262626] flex items-center text-xs font-mono text-[#A3A3A3]">
-            <AlertCircle className="w-4 h-4 mr-2 text-yellow-500" />
-            Configure Height, Age, and Gender in Settings to unlock Maximum Growth Analysis.
-          </div>
-        )}
-      </div>
-
       {/* Scratchpad */}
       <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
         <div className="flex justify-between items-center mb-4">
@@ -407,6 +239,35 @@ export function StatusView() {
           className="w-full h-32 bg-[#0A0A0A] border border-[#262626] rounded-md p-4 text-[#A3A3A3] font-mono text-sm focus:outline-none focus:text-white transition-colors resize-none"
           style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
         />
+      </div>
+
+      {/* Recovery Status */}
+      <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
+        <h3 className="text-lg font-mono text-white mb-4 flex items-center">
+          <Heart className="w-5 h-5 mr-2 text-red-400" />
+          RECOVERY & GROWTH STATUS
+        </h3>
+        <p className="text-sm text-[#A3A3A3] mb-6">Monitor your vessel's recovery state based on recent sleep patterns.</p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-4">
+            <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
+              <Activity className="w-3 h-3 mr-1" /> 7-DAY AVG SLEEP
+            </div>
+            <div className="text-2xl font-mono text-white mb-1">{avgSleep > 0 ? avgSleep.toFixed(1) : '--'} <span className="text-sm text-[#A3A3A3]">hrs</span></div>
+            <div className={cn("text-xs font-mono px-2 py-1 rounded inline-block bg-[#1A1A1A] border border-[#333]", recoveryColor)}>
+              {recoveryStatus}
+            </div>
+          </div>
+          <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-4 md:col-span-2 flex flex-col justify-center">
+            <p className="text-sm text-[#A3A3A3] font-mono leading-relaxed">
+              {recoveryStatus === 'Optimal' && "Your vessel is in an optimal state for muscle synthesis and cognitive recovery. Maintain current sleep patterns."}
+              {recoveryStatus === 'Fair' && "Recovery is adequate but could be improved. Aim for 7-9 hours of sleep to maximize growth and performance."}
+              {recoveryStatus === 'Poor' && "Warning: Insufficient recovery detected. Cortisol levels may be elevated, hindering muscle growth and fat loss. Prioritize rest."}
+              {recoveryStatus === 'Unknown' && "Insufficient data to determine recovery status. Log your sleep in the Metabolism tab."}
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
