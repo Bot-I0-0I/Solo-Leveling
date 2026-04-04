@@ -8,7 +8,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 
 export function NutritionView() {
   const userStats = useLiveQuery(() => db.userStats.get(1));
-  const vesselLogs = useLiveQuery(() => db.vesselLogs.toArray());
+  const vesselLogs = useLiveQuery(() => db.vesselLogs.orderBy('date').toArray());
   const foodTemplates = useLiveQuery(() => db.foodTemplates.toArray());
   const today = format(new Date(), 'yyyy-MM-dd');
   
@@ -54,8 +54,9 @@ export function NutritionView() {
   const themeColor = userStats?.selectedColor || rankColor;
 
   // Calculate BMR, TDEE, and BMI
-  const latestLog = vesselLogs?.[vesselLogs.length - 1];
-  const currentWeight = latestLog?.weight;
+  const latestWeightLog = vesselLogs?.slice().reverse().find(log => log.weight !== undefined);
+  const currentWeight = latestWeightLog?.weight;
+  const todayLog = vesselLogs?.find(l => l.date === today);
   
   let bmr = 0;
   let bmi = null;
@@ -321,8 +322,66 @@ export function NutritionView() {
         <p className="text-[#A3A3A3] text-xs md:text-sm mt-1">Advanced tracking for caloric intake, macros, and physical exertion.</p>
       </header>
 
-      {/* Professional Dashboard */}
+      {/* Metabolic Profile */}
       {bmr > 0 ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-bl-full" />
+            <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center">
+              <Activity className="w-3 h-3 mr-1" />
+              BASAL METABOLIC RATE
+            </div>
+            <div className="text-2xl font-mono font-bold text-white">{Math.round(bmr)} <span className="text-sm text-[#A3A3A3]">kcal</span></div>
+            <div className="text-[10px] font-mono text-[#A3A3A3] mt-1">Calories burned at rest</div>
+          </div>
+          
+          <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-orange-500/5 to-transparent rounded-bl-full" />
+            <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center">
+              <Flame className="w-3 h-3 mr-1" />
+              TOTAL DAILY ENERGY (TDEE)
+            </div>
+            <div className="text-2xl font-mono font-bold text-orange-400">{Math.round(tdee)} <span className="text-sm text-orange-400/50">kcal</span></div>
+            <div className="text-[10px] font-mono text-[#A3A3A3] mt-1">Maintenance calories</div>
+          </div>
+
+          <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-green-500/5 to-transparent rounded-bl-full" />
+            <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center">
+              <Activity className="w-3 h-3 mr-1" />
+              BMI INDEX
+            </div>
+            <div className="text-2xl font-mono font-bold text-white">{bmi?.toFixed(1)}</div>
+            <div className={cn(
+              "text-[10px] font-mono mt-1",
+              bmiCategory === 'Optimal' ? "text-green-400" :
+              bmiCategory === 'Underweight' ? "text-blue-400" :
+              "text-red-400"
+            )}>
+              {bmiCategory.toUpperCase()}
+            </div>
+          </div>
+
+          <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-purple-500/5 to-transparent rounded-bl-full" />
+            <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center">
+              <Target className="w-3 h-3 mr-1" />
+              OPTIMAL CAPACITY
+            </div>
+            <div className="text-2xl font-mono font-bold text-white">
+              {idealWeightMin.toFixed(1)}<span className="text-sm text-[#A3A3A3]">-</span>{idealWeightMax.toFixed(1)} <span className="text-sm text-[#A3A3A3]">kg</span>
+            </div>
+            <div className="text-[10px] font-mono text-[#A3A3A3] mt-1">Target weight range</div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 text-center">
+          <p className="text-[#A3A3A3] font-mono text-sm">Please update your profile (height, age, gender) and log your weight to calculate your metabolic profile.</p>
+        </div>
+      )}
+
+      {/* Professional Dashboard */}
+      {bmr > 0 && (
         <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 md:p-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div>
@@ -330,9 +389,6 @@ export function NutritionView() {
                 <Target className="w-5 h-5 mr-2" style={{ color: themeColor }} />
                 DAILY TARGET: {goalLabel}
               </h3>
-              <p className="text-xs text-[#A3A3A3] font-mono mt-1">
-                TDEE: {Math.round(tdee)} kcal | BMR: {Math.round(bmr)} kcal
-              </p>
             </div>
             <div className="text-left md:text-right">
               <div className="text-3xl font-mono text-white">
@@ -458,10 +514,6 @@ export function NutritionView() {
             </div>
           </div>
         </div>
-      ) : (
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 text-center">
-          <p className="text-[#A3A3A3] font-mono text-sm">Update your Height, Age, Gender, Weight, and Goals in Settings & Status to unlock the Metabolic Engine.</p>
-        </div>
       )}
 
       {/* Summary Cards (Consumed vs Burned vs Water) */}
@@ -526,7 +578,7 @@ export function NutritionView() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <div className="text-3xl font-mono text-white mb-2">
-              {latestLog?.sleepHours || 0} <span className="text-sm text-[#A3A3A3]">hrs logged today</span>
+              {todayLog?.sleepHours || 0} <span className="text-sm text-[#A3A3A3]">hrs logged today</span>
             </div>
             <p className="text-xs text-[#A3A3A3] font-mono leading-relaxed">
               Optimal sleep (7-9 hours) is critical for metabolic health, muscle recovery, and cognitive function. Lack of sleep increases cortisol and decreases insulin sensitivity, hindering fat loss and muscle growth.
@@ -826,7 +878,12 @@ export function NutritionView() {
           <div className="lg:col-span-2 h-[300px] min-h-[250px] bg-[#0A0A0A] border border-[#262626] rounded-lg p-4">
             {vesselLogs && vesselLogs.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                <LineChart data={vesselLogs}>
+                <LineChart data={vesselLogs.map(log => ({
+                  ...log,
+                  weight: log.weight ?? null,
+                  bodyFat: log.bodyFat ?? null,
+                  stressLevel: log.stressLevel ?? null,
+                }))}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
                   <XAxis dataKey="date" stroke="#A3A3A3" fontSize={10} tickFormatter={(val) => val.substring(5)} />
                   <YAxis yAxisId="left" stroke="#A3A3A3" fontSize={10} domain={['dataMin - 2', 'dataMax + 2']} />
@@ -835,9 +892,9 @@ export function NutritionView() {
                     contentStyle={{ backgroundColor: '#141414', borderColor: '#262626', color: '#fff' }}
                     itemStyle={{ color: themeColor }}
                   />
-                  <Line yAxisId="left" type="monotone" dataKey="weight" name="Weight (kg)" stroke={themeColor} strokeWidth={2} dot={{ r: 4, fill: themeColor }} activeDot={{ r: 6 }} />
-                  <Line yAxisId="right" type="monotone" dataKey="bodyFat" name="Body Fat %" stroke="#FFD700" strokeWidth={2} dot={{ r: 4, fill: '#FFD700' }} />
-                  <Line yAxisId="right" type="monotone" dataKey="stressLevel" name="Stress (1-5)" stroke="#ef4444" strokeWidth={2} dot={{ r: 4, fill: '#ef4444' }} />
+                  <Line yAxisId="left" type="monotone" dataKey="weight" name="Weight (kg)" stroke={themeColor} strokeWidth={2} dot={{ r: 4, fill: themeColor }} activeDot={{ r: 6 }} connectNulls />
+                  <Line yAxisId="right" type="monotone" dataKey="bodyFat" name="Body Fat %" stroke="#FFD700" strokeWidth={2} dot={{ r: 4, fill: '#FFD700' }} connectNulls />
+                  <Line yAxisId="right" type="monotone" dataKey="stressLevel" name="Stress (1-5)" stroke="#ef4444" strokeWidth={2} dot={{ r: 4, fill: '#ef4444' }} connectNulls />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
@@ -892,48 +949,6 @@ export function NutritionView() {
             </form>
           </div>
         </div>
-
-        {/* Growth Analysis Panel */}
-        {bmi && bmr && tdee && (
-          <div className="mt-6 pt-6 border-t border-[#262626] grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-4">
-              <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
-                <Activity className="w-3 h-3 mr-1" /> BMI INDEX
-              </div>
-              <div className="text-2xl font-mono text-white mb-1">{bmi.toFixed(1)}</div>
-              <div className={cn(
-                "text-xs font-mono px-2 py-1 rounded inline-block",
-                bmiCategory === 'Optimal' ? "bg-green-950/30 text-green-500 border border-green-900/50" :
-                bmiCategory === 'Underweight' ? "bg-blue-950/30 text-blue-500 border border-blue-900/50" :
-                "bg-red-950/30 text-red-500 border border-red-900/50"
-              )}>
-                {bmiCategory.toUpperCase()}
-              </div>
-            </div>
-            
-            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-4">
-              <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
-                <Flame className="w-3 h-3 mr-1" /> METABOLIC RATE (TDEE)
-              </div>
-              <div className="text-2xl font-mono text-white mb-1">{Math.round(tdee)} <span className="text-sm text-[#A3A3A3]">kcal/day</span></div>
-              <div className="text-xs font-mono text-[#A3A3A3] mt-2">
-                Base BMR: <span className="text-white">{Math.round(bmr)} kcal</span>
-              </div>
-            </div>
-
-            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-4">
-              <div className="text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
-                <Target className="w-3 h-3 mr-1" /> OPTIMAL CAPACITY
-              </div>
-              <div className="text-2xl font-mono text-white mb-1">
-                {idealWeightMin.toFixed(1)} - {idealWeightMax.toFixed(1)} <span className="text-sm text-[#A3A3A3]">kg</span>
-              </div>
-              <div className="text-xs font-mono text-[#A3A3A3] mt-2">
-                Target range for maximum physical efficiency.
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

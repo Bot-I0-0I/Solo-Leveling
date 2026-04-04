@@ -46,7 +46,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { id: 'quests', icon: Shield, label: 'Quests' },
     { id: 'hub', icon: LayoutGrid, label: 'Hub' },
     { id: 'store', icon: ShoppingCart, label: 'System' },
-    { id: 'menu', icon: Menu, label: 'Menu' },
+    { id: 'settings', icon: Settings, label: 'Settings' },
   ] as const;
 
   return (
@@ -156,24 +156,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {mobileNavItems.map((item) => (
           <button
             key={item.id}
-            onClick={() => {
-              if (item.id === 'menu') {
-                setIsMobileMenuOpen(true);
-              } else {
-                setView(item.id as any);
-              }
-            }}
+            onClick={() => setView(item.id as any)}
             className={cn(
               "flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 relative flex-1",
-              (currentView === item.id || (item.id === 'menu' && isMobileMenuOpen))
+              currentView === item.id
                 ? (isPenalty ? "text-red-400" : "")
                 : "text-[#A3A3A3]"
             )}
-            style={(currentView === item.id || (item.id === 'menu' && isMobileMenuOpen)) && !isPenalty ? { color: themeColor } : {}}
+            style={currentView === item.id && !isPenalty ? { color: themeColor } : {}}
           >
             <item.icon className="w-6 h-6 mb-1" />
             <span className="text-[10px] font-mono uppercase tracking-tighter">{item.label}</span>
-            {(currentView === item.id || (item.id === 'menu' && isMobileMenuOpen)) && (
+            {currentView === item.id && (
               <motion.div 
                 layoutId="activeTab"
                 className="absolute -top-2 w-1 h-1 rounded-full"
@@ -224,54 +218,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </motion.div>
       </main>
-
-      {/* Mobile Menu Overlay */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: '100%' }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="md:hidden fixed inset-0 z-[60] bg-[#0A0A0A] flex flex-col"
-          >
-            <div className="flex justify-between items-center p-6 border-b border-[#262626]">
-              <h2 className="text-xl font-mono font-bold text-white">SYSTEM MENU</h2>
-              <button 
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2 bg-[#1A1A1A] rounded-full text-[#A3A3A3] hover:text-white"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {navItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setView(item.id as any);
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={cn(
-                    "w-full flex items-center space-x-4 p-4 rounded-xl transition-all duration-200",
-                    currentView === item.id 
-                      ? "bg-[#262626] text-white"
-                      : "text-[#A3A3A3] hover:bg-[#1A1A1A] hover:text-white"
-                  )}
-                  style={currentView === item.id && !isPenalty ? { color: themeColor } : {}}
-                >
-                  <item.icon className="w-6 h-6" />
-                  <span className="text-lg font-medium">{item.label}</span>
-                  {item.id === 'reviews' && pendingReviews.length > 0 && (
-                    <span className="ml-auto w-2 h-2 bg-red-500 rounded-full"></span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

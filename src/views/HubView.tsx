@@ -5,7 +5,7 @@ import { db } from '../db/db';
 import { 
   Activity, Crosshair, Shield, ShoppingCart, Swords, 
   BookOpen, CalendarDays, Wallet, Settings, Flame, 
-  ChevronRight, LayoutGrid, Users
+  ChevronRight, LayoutGrid, Users, Zap, Terminal, Cpu
 } from 'lucide-react';
 import { cn, getRank } from '../lib/utils';
 import { motion } from 'framer-motion';
@@ -13,10 +13,14 @@ import { motion } from 'framer-motion';
 export function HubView() {
   const { setView } = useStore();
   const userStats = useLiveQuery(() => db.userStats.get(1));
+  const quests = useLiveQuery(() => db.quests.toArray());
   
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
   const rankColor = getRank(level).color;
   const themeColor = userStats?.selectedColor || rankColor;
+
+  const activeQuests = quests?.filter(q => q.status === 'active').length || 0;
+  const gold = userStats?.gold || 0;
 
   const categories = [
     {
@@ -54,40 +58,96 @@ export function HubView() {
 
   return (
     <div className="space-y-8 pb-12">
-      <header className="border-b border-[#262626] pb-6">
-        <h2 className="text-3xl font-mono font-bold tracking-tight text-white flex items-center">
-          <LayoutGrid className="w-8 h-8 mr-3" style={{ color: themeColor }} />
-          SYSTEM HUB
-        </h2>
-        <p className="text-[#A3A3A3] text-sm mt-1 font-mono uppercase tracking-widest">Central Command Interface</p>
+      <header className="border-b border-[#262626] pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center space-x-3 mb-2">
+            <Terminal className="w-5 h-5 text-[#A3A3A3]" />
+            <span className="text-xs font-mono text-[#A3A3A3] tracking-widest uppercase">System Initialization Complete</span>
+          </div>
+          <h2 className="text-3xl md:text-4xl font-mono font-bold tracking-tight text-white flex items-center" style={{ textShadow: `0 0 20px ${themeColor}40` }}>
+            <LayoutGrid className="w-8 h-8 md:w-10 md:h-10 mr-4" style={{ color: themeColor }} />
+            COMMAND HUB
+          </h2>
+        </div>
+        <div className="flex items-center space-x-2 bg-[#141414] border border-[#262626] px-4 py-2 rounded-lg">
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-xs font-mono text-green-500 tracking-widest">SYSTEM ONLINE</span>
+        </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      {/* Quick Stats Dashboard */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-white/5 to-transparent rounded-bl-full" />
+          <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center">
+            <Cpu className="w-3 h-3 mr-1" />
+            CURRENT LEVEL
+          </div>
+          <div className="text-2xl font-mono font-bold text-white">{level}</div>
+          <div className="absolute bottom-0 left-0 h-1 bg-white/20 w-full">
+            <div className="h-full" style={{ width: `${((userStats?.xp || 0) % 1000) / 10}%`, backgroundColor: themeColor }} />
+          </div>
+        </div>
+        
+        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-yellow-500/5 to-transparent rounded-bl-full" />
+          <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center">
+            <Wallet className="w-3 h-3 mr-1" />
+            TREASURY
+          </div>
+          <div className="text-2xl font-mono font-bold text-yellow-500">{gold.toLocaleString()} <span className="text-sm text-yellow-500/50">G</span></div>
+        </div>
+
+        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-bl-full" />
+          <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center">
+            <Shield className="w-3 h-3 mr-1" />
+            ACTIVE QUESTS
+          </div>
+          <div className="text-2xl font-mono font-bold text-blue-400">{activeQuests}</div>
+        </div>
+
+        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-purple-500/5 to-transparent rounded-bl-full" />
+          <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center">
+            <Zap className="w-3 h-3 mr-1" />
+            ENERGY
+          </div>
+          <div className="text-2xl font-mono font-bold text-purple-400">100<span className="text-sm text-purple-400/50">%</span></div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {categories.map((cat, idx) => (
           <motion.div 
             key={cat.title}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.1 }}
-            className="space-y-4"
+            className="bg-[#0A0A0A] border border-[#262626] rounded-2xl p-6 relative overflow-hidden"
           >
-            <h3 className="text-xs font-mono text-[#A3A3A3] tracking-[0.2em] border-l-2 pl-3" style={{ borderColor: themeColor }}>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/5 to-transparent rounded-bl-full pointer-events-none" style={{ backgroundImage: `linear-gradient(to bottom left, ${themeColor}10, transparent)` }} />
+            
+            <h3 className="text-xs font-mono text-white tracking-[0.2em] mb-6 flex items-center">
+              <div className="w-1 h-4 mr-3 rounded-full" style={{ backgroundColor: themeColor }} />
               {cat.title}
             </h3>
-            <div className="grid grid-cols-1 gap-3">
+            
+            <div className="grid grid-cols-1 gap-3 relative z-10">
               {cat.items.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setView(item.id as any)}
-                  className="group flex items-center justify-between p-4 bg-[#141414] border border-[#262626] hover:border-[#333] rounded-xl transition-all duration-300 text-left"
+                  className="group flex items-center justify-between p-4 bg-[#141414] border border-[#262626] hover:border-[#333] rounded-xl transition-all duration-300 text-left hover:shadow-lg"
+                  style={{ '--hover-color': themeColor } as any}
                 >
                   <div className="flex items-center space-x-4">
-                    <div className="p-2 bg-[#0A0A0A] rounded-lg group-hover:scale-110 transition-transform duration-300">
-                      <item.icon className="w-5 h-5" style={{ color: themeColor }} />
+                    <div className="p-2.5 bg-[#0A0A0A] border border-[#262626] rounded-lg group-hover:scale-110 transition-transform duration-300 group-hover:border-[var(--hover-color)] shadow-inner">
+                      <item.icon className="w-5 h-5 transition-colors duration-300" style={{ color: themeColor }} />
                     </div>
                     <div>
-                      <div className="text-sm font-mono text-white group-hover:text-white transition-colors">{item.label}</div>
-                      <div className="text-[10px] font-mono text-[#A3A3A3] uppercase tracking-tighter">{item.desc}</div>
+                      <div className="text-sm font-mono font-bold text-white group-hover:text-white transition-colors">{item.label}</div>
+                      <div className="text-[10px] font-mono text-[#A3A3A3] uppercase tracking-widest mt-0.5">{item.desc}</div>
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-[#262626] group-hover:text-white group-hover:translate-x-1 transition-all" />
