@@ -23,6 +23,7 @@ export function StatusView() {
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
   const { rank, color: rankColor } = getRank(level);
   const themeColor = userStats?.selectedColor || rankColor;
+  const uiTheme = userStats?.uiTheme || 'default';
 
   const [notes, setNotes] = React.useState(userStats?.notes || '');
 
@@ -115,9 +116,21 @@ export function StatusView() {
 
   return (
     <div className="space-y-6 md:space-y-8">
-      <header className="border-b border-[#262626] pb-4 md:pb-6">
-        <h2 className="text-2xl md:text-3xl font-mono font-bold tracking-tight text-white">STATUS WINDOW</h2>
-        <p className="text-[#A3A3A3] text-xs md:text-sm mt-1">Identity Dashboard & Attribute Matrix</p>
+      <header className="border-b border-[#262626] pb-4 md:pb-6 relative">
+        {uiTheme === 'monarch' && (
+          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+        )}
+        {uiTheme === 's_class' && (
+          <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+        )}
+        <div className="relative z-10">
+          <h2 className="text-2xl md:text-3xl font-mono font-bold tracking-tight text-white flex items-center">
+            {uiTheme === 'monarch' && <Target className="w-6 h-6 md:w-8 md:h-8 mr-3 text-indigo-400" />}
+            {uiTheme === 's_class' && <Activity className="w-6 h-6 md:w-8 md:h-8 mr-3 text-purple-400" />}
+            STATUS WINDOW
+          </h2>
+          <p className="text-[#A3A3A3] text-xs md:text-sm mt-1">Identity Dashboard & Attribute Matrix</p>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -164,24 +177,43 @@ export function StatusView() {
         </div>
 
         {/* Level & Rank Card */}
-        <div className="col-span-1 bg-[#141414] border border-[#262626] rounded-xl p-6 flex flex-col items-center justify-center relative overflow-hidden">
+        <div className={cn(
+          "col-span-1 border rounded-xl p-6 flex flex-col items-center justify-center relative overflow-hidden transition-colors duration-500",
+          uiTheme === 'monarch' ? "bg-[#05050A] border-indigo-500/50 shadow-[0_0_30px_rgba(99,102,241,0.15)]" :
+          uiTheme === 's_class' ? "bg-[#141414] border-purple-500/40 shadow-[0_0_20px_rgba(168,85,247,0.1)]" :
+          "bg-[#141414] border-[#262626]"
+        )}>
+          {/* Animated Background for High Ranks */}
+          {(uiTheme === 'monarch' || uiTheme === 's_class') && (
+            <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden">
+              <div className={cn(
+                "absolute -inset-[100%] animate-[spin_10s_linear_infinite]",
+                uiTheme === 'monarch' ? "bg-[conic-gradient(from_0deg,transparent_0_340deg,rgba(99,102,241,0.4)_360deg)]" :
+                "bg-[conic-gradient(from_0deg,transparent_0_340deg,rgba(168,85,247,0.4)_360deg)]"
+              )} />
+            </div>
+          )}
+          
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#00F0FF] to-transparent opacity-50"></div>
-          <div className="text-sm font-mono text-[#A3A3A3] mb-2">CURRENT RANK</div>
+          <div className="text-sm font-mono text-[#A3A3A3] mb-2 relative z-10">CURRENT RANK</div>
           <div 
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black font-mono leading-none mb-4 text-center px-2"
-            style={{ color: themeColor, textShadow: `0 0 10px ${themeColor}40` }}
+            className={cn(
+              "text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black font-mono leading-none mb-4 text-center px-2 relative z-10",
+              (uiTheme === 'monarch' || uiTheme === 's_class') && "animate-pulse"
+            )}
+            style={{ color: themeColor, textShadow: `0 0 20px ${themeColor}80` }}
           >
             {rank}
           </div>
-          <div className="text-2xl font-mono text-white">LEVEL {level}</div>
-          <div className="text-sm font-mono text-[#A3A3A3] mt-1 uppercase tracking-widest">{userStats.role || 'Player'}</div>
-          <div className="mt-4 w-full bg-[#262626] h-2 rounded-full overflow-hidden">
+          <div className="text-2xl font-mono text-white relative z-10">LEVEL {level}</div>
+          <div className="text-sm font-mono text-[#A3A3A3] mt-1 uppercase tracking-widest relative z-10">{userStats.role || 'Player'}</div>
+          <div className="mt-4 w-full bg-[#262626] h-2 rounded-full overflow-hidden relative z-10">
             <div 
               className="h-full transition-all duration-500" 
               style={{ width: `${(userStats.xp % 1000) / 10}%`, backgroundColor: themeColor }}
             ></div>
           </div>
-          <div className="text-xs text-[#A3A3A3] mt-2 text-right w-full">{userStats.xp % 1000} / 1000 XP</div>
+          <div className="text-xs text-[#A3A3A3] mt-2 text-right w-full relative z-10">{userStats.xp % 1000} / 1000 XP</div>
         </div>
 
         {/* Radar Chart */}

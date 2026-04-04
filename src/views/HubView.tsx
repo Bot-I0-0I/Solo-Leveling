@@ -18,6 +18,7 @@ export function HubView() {
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
   const rankColor = getRank(level).color;
   const themeColor = userStats?.selectedColor || rankColor;
+  const uiTheme = userStats?.uiTheme || 'default';
 
   const activeQuests = quests?.filter(q => q.status === 'active').length || 0;
   const gold = userStats?.gold || 0;
@@ -58,20 +59,51 @@ export function HubView() {
 
   return (
     <div className="space-y-8 pb-12">
-      <header className="border-b border-[#262626] pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
+      <header className="border-b border-[#262626] pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4 relative">
+        {uiTheme === 'monarch' && (
+          <div className="absolute top-0 right-1/4 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+        )}
+        {uiTheme === 's_class' && (
+          <div className="absolute top-0 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+        )}
+        <div className="relative z-10">
           <div className="flex items-center space-x-3 mb-2">
             <Terminal className="w-5 h-5 text-[#A3A3A3]" />
-            <span className="text-xs font-mono text-[#A3A3A3] tracking-widest uppercase">System Initialization Complete</span>
+            <span className="text-xs font-mono text-[#A3A3A3] tracking-widest uppercase">
+              {uiTheme === 'monarch' ? 'Monarch Protocol Initialized' : 
+               uiTheme === 's_class' ? 'S-Class Subsystems Online' : 
+               'System Initialization Complete'}
+            </span>
           </div>
           <h2 className="text-3xl md:text-4xl font-mono font-bold tracking-tight text-white flex items-center" style={{ textShadow: `0 0 20px ${themeColor}40` }}>
             <LayoutGrid className="w-8 h-8 md:w-10 md:h-10 mr-4" style={{ color: themeColor }} />
-            COMMAND HUB
+            {uiTheme === 'monarch' ? 'MONARCH COMMAND' : 
+             uiTheme === 's_class' ? 'S-CLASS HUB' : 
+             'COMMAND HUB'}
           </h2>
         </div>
-        <div className="flex items-center space-x-2 bg-[#141414] border border-[#262626] px-4 py-2 rounded-lg">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-xs font-mono text-green-500 tracking-widest">SYSTEM ONLINE</span>
+        <div className={cn(
+          "flex items-center space-x-2 border px-4 py-2 rounded-lg relative z-10 transition-colors duration-500",
+          uiTheme === 'monarch' ? "bg-indigo-950/30 border-indigo-500/50" :
+          uiTheme === 's_class' ? "bg-purple-950/30 border-purple-500/50" :
+          "bg-[#141414] border-[#262626]"
+        )}>
+          <div className={cn(
+            "w-2 h-2 rounded-full animate-pulse",
+            uiTheme === 'monarch' ? "bg-indigo-400" :
+            uiTheme === 's_class' ? "bg-purple-400" :
+            "bg-green-500"
+          )} />
+          <span className={cn(
+            "text-xs font-mono tracking-widest",
+            uiTheme === 'monarch' ? "text-indigo-400" :
+            uiTheme === 's_class' ? "text-purple-400" :
+            "text-green-500"
+          )}>
+            {uiTheme === 'monarch' ? 'MONARCH ONLINE' : 
+             uiTheme === 's_class' ? 'S-CLASS ONLINE' : 
+             'SYSTEM ONLINE'}
+          </span>
         </div>
       </header>
 
@@ -138,11 +170,26 @@ export function HubView() {
                 <button
                   key={item.id}
                   onClick={() => setView(item.id as any)}
-                  className="group flex items-center justify-between p-4 bg-[#141414] border border-[#262626] hover:border-[#333] rounded-xl transition-all duration-300 text-left hover:shadow-lg"
+                  className={cn(
+                    "group flex items-center justify-between p-4 bg-[#141414] border rounded-xl transition-all duration-300 text-left hover:shadow-lg relative overflow-hidden",
+                    uiTheme === 'monarch' ? "border-indigo-900/30 hover:border-indigo-500/50" :
+                    uiTheme === 's_class' ? "border-purple-900/30 hover:border-purple-500/50" :
+                    "border-[#262626] hover:border-[#333]"
+                  )}
                   style={{ '--hover-color': themeColor } as any}
                 >
-                  <div className="flex items-center space-x-4">
-                    <div className="p-2.5 bg-[#0A0A0A] border border-[#262626] rounded-lg group-hover:scale-110 transition-transform duration-300 group-hover:border-[var(--hover-color)] shadow-inner">
+                  {/* High rank hover glow */}
+                  {(uiTheme === 'monarch' || uiTheme === 's_class') && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
+                  )}
+                  
+                  <div className="flex items-center space-x-4 relative z-10">
+                    <div className={cn(
+                      "p-2.5 bg-[#0A0A0A] border rounded-lg group-hover:scale-110 transition-transform duration-300 shadow-inner",
+                      uiTheme === 'monarch' ? "border-indigo-900/50 group-hover:border-indigo-500" :
+                      uiTheme === 's_class' ? "border-purple-900/50 group-hover:border-purple-500" :
+                      "border-[#262626] group-hover:border-[var(--hover-color)]"
+                    )}>
                       <item.icon className="w-5 h-5 transition-colors duration-300" style={{ color: themeColor }} />
                     </div>
                     <div>

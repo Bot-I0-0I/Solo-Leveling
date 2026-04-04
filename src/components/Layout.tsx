@@ -64,22 +64,31 @@ export function Layout({ children }: { children: React.ReactNode }) {
       
       {/* Sidebar (Desktop) */}
       <nav className={cn(
-        "hidden md:flex md:flex-col md:w-64 border-r border-[#262626] bg-[#0A0A0A]/90 backdrop-blur-md z-50 p-4 overflow-y-auto custom-scrollbar space-y-2 transition-colors duration-500",
-        uiTheme === 'monarch' && "bg-[#05050A]/90 border-indigo-500/30",
+        "hidden md:flex md:flex-col md:w-64 border-r border-[#262626] bg-[#0A0A0A]/90 backdrop-blur-md z-50 p-4 overflow-y-auto custom-scrollbar space-y-2 transition-colors duration-500 relative",
+        uiTheme === 'monarch' && "bg-[#05050A]/90 border-indigo-500/30 shadow-[10px_0_30px_-15px_rgba(99,102,241,0.3)]",
         uiTheme === 'national' && "border-cyan-500/20",
         uiTheme === 'sss' && "border-purple-500/20",
         uiTheme === 'ss' && "border-red-500/20",
         uiTheme === 's_plus' && "border-yellow-400/30",
-        uiTheme === 's' && "border-yellow-500/20",
+        uiTheme === 's_class' && "border-purple-500/30 shadow-[10px_0_30px_-15px_rgba(168,85,247,0.2)]",
         uiTheme === 'elite' && "border-blue-500/20",
         isPenalty && "border-red-900/50 bg-[#1A0505]/90"
       )}>
-        <div className="flex flex-col mb-8 px-4">
+        <div className="flex flex-col mb-8 px-4 relative">
+          {uiTheme === 'monarch' && (
+            <div className="absolute -top-4 -left-4 w-24 h-24 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
+          )}
+          {uiTheme === 's_class' && (
+            <div className="absolute -top-4 -left-4 w-24 h-24 bg-purple-500/20 rounded-full blur-2xl pointer-events-none" />
+          )}
           <h1 className={cn(
-            "text-2xl font-bold tracking-tighter uppercase font-mono transition-all duration-500",
+            "text-2xl font-bold tracking-tighter uppercase font-mono transition-all duration-500 relative z-10",
             isPenalty ? "text-red-500" : ""
           )} style={!isPenalty ? { color: themeColor, textShadow: `0 0 10px ${themeColor}80` } : {}}>
-            {isPenalty ? 'PENALTY ZONE' : 'LIFE CONTROL SYSTEM'}
+            {isPenalty ? 'PENALTY ZONE' : 
+             uiTheme === 'monarch' ? 'MONARCH DOMAIN' : 
+             uiTheme === 's_class' ? 'S-CLASS SYSTEM' : 
+             'LIFE CONTROL SYSTEM'}
           </h1>
           
           {userStats?.name && (
