@@ -203,7 +203,7 @@ service cloud.firestore {
 
     function isValidUserStats(data) {
       let requiredFields = ['STR', 'VIT', 'AGI', 'INT', 'SEN', 'credits', 'xp', 'penaltyActive', 'lastResetDate', 'uid'];
-      let optionalFields = ['name', 'avatar', 'height', 'age', 'gender', 'notes', 'fitnessGoal', 'activityLevel', 'friends'];
+      let optionalFields = ['name', 'avatar', 'height', 'age', 'gender', 'notes', 'fitnessGoal', 'activityLevel', 'friends', 'role', 'uiTheme', 'backgroundImage', 'useRankTheme', 'selectedColor'];
       let allFields = requiredFields.concat(optionalFields);
 
       return hasRequiredFields(requiredFields) &&
@@ -226,7 +226,12 @@ service cloud.firestore {
              isValidOptionalString('notes', 0, 5000) &&
              (!( 'fitnessGoal' in data ) || data.fitnessGoal in ['lose', 'maintain', 'build']) &&
              (!( 'activityLevel' in data ) || data.activityLevel in ['sedentary', 'light', 'moderate', 'active', 'very_active']) &&
-             (!( 'friends' in data ) || data.friends is list);
+             (!( 'friends' in data ) || data.friends is list) &&
+             isValidOptionalString('role', 0, 100) &&
+             isValidOptionalString('uiTheme', 0, 100) &&
+             isValidOptionalString('backgroundImage', 0, 500) &&
+             (!( 'useRankTheme' in data ) || data.useRankTheme is bool) &&
+             isValidOptionalString('selectedColor', 0, 50);
     }
 
     function isValidPublicProfile(data) {
@@ -261,7 +266,8 @@ service cloud.firestore {
 
     function isValidQuest(data) {
       let requiredFields = ['title', 'attribute', 'targetValue', 'currentValue', 'type', 'completed', 'date', 'baseReward', 'uid'];
-      let allFields = requiredFields;
+      let optionalFields = ['isRecurring'];
+      let allFields = requiredFields.concat(optionalFields);
 
       return hasRequiredFields(requiredFields) &&
              hasOnlyAllowedFields(allFields) &&
@@ -273,7 +279,8 @@ service cloud.firestore {
              data.completed is bool &&
              validStringLength('date', 10, 10) &&
              data.baseReward is number && data.baseReward >= 0 &&
-             data.uid == request.auth.uid;
+             data.uid == request.auth.uid &&
+             (!( 'isRecurring' in data ) || data.isRecurring is bool);
     }
 
     function isValidDungeon(data) {
