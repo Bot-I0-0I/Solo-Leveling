@@ -178,17 +178,20 @@ export function NutritionView() {
 
     if (!name || !calories) return;
 
-    await db.nutritionLogs.add({
+    const logData: any = {
       date: today,
       type: activeTab,
       name,
       calories: parseInt(calories),
-      protein: protein ? parseInt(protein) : undefined,
-      carbs: carbs ? parseInt(carbs) : undefined,
-      fat: fat ? parseInt(fat) : undefined,
-      duration: duration ? parseInt(duration) : undefined,
-      muscleGroup: activeTab === 'exercise' && muscleGroup ? (muscleGroup as any) : undefined,
-    });
+    };
+
+    if (protein) logData.protein = parseInt(protein);
+    if (carbs) logData.carbs = parseInt(carbs);
+    if (fat) logData.fat = parseInt(fat);
+    if (duration) logData.duration = parseInt(duration);
+    if (activeTab === 'exercise' && muscleGroup) logData.muscleGroup = muscleGroup;
+
+    await db.nutritionLogs.add(logData);
 
     if (activeTab === 'exercise') {
       await addXp(parseInt(calories) / 10); // 1 XP per 10 calories burned

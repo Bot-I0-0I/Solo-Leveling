@@ -20,8 +20,8 @@ export function HubView() {
   const themeColor = userStats?.selectedColor || rankColor;
   const uiTheme = userStats?.uiTheme || 'default';
 
-  const activeQuests = quests?.filter(q => q.status === 'active').length || 0;
-  const gold = userStats?.gold || 0;
+  const activeQuests = quests?.filter(q => !q.completed).length || 0;
+  const credits = userStats?.credits || 0;
 
   const categories = [
     {
@@ -127,7 +127,7 @@ export function HubView() {
             <Wallet className="w-3 h-3 mr-1" />
             TREASURY
           </div>
-          <div className="text-2xl font-mono font-bold text-yellow-500">{gold.toLocaleString()} <span className="text-sm text-yellow-500/50">G</span></div>
+          <div className="text-2xl font-mono font-bold text-yellow-500">{credits.toLocaleString()} <span className="text-sm text-yellow-500/50">G</span></div>
         </div>
 
         <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
