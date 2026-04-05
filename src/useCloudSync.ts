@@ -42,6 +42,7 @@ export function useCloudSync() {
 
   const cleanData = (obj: any) => {
     const newObj = { ...obj };
+    delete newObj.id;
     Object.keys(newObj).forEach(key => {
       if (newObj[key] === undefined) {
         delete newObj[key];
