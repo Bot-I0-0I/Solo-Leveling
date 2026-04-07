@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp, Task } from '../db/db';
+import { generateTasks } from '../services/aiService';
 import { cn, getRank } from '../lib/utils';
 import { CalendarDays, CheckCircle, Circle, Plus, Clock, Repeat, AlertTriangle, Sparkles } from 'lucide-react';
 import { format, isBefore, startOfDay } from 'date-fns';
@@ -81,22 +82,16 @@ export function SchedulerView() {
     if (!aiGoal) return;
     setIsGenerating(true);
     try {
-      const res = await fetch('/api/generate-tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goal: aiGoal, date })
-      });
-      if (!res.ok) throw new Error('Failed to generate tasks');
-      const data = await res.json();
+      const data = await generateTasks(aiGoal, date);
       
       for (const t of data.tasks) {
         await db.tasks.add({
-          title: t.title,
-          date: t.date,
-          time: t.time,
-          priority: t.priority,
+          title: t.title || 'Generated Task',
+          date: t.date || date,
+          time: t.time || '12:00',
+          priority: t.priority || 'medium',
           completed: false,
-          xpReward: t.xpReward,
+          xpReward: t.xpReward || 20,
           recurrence: 'none'
         });
       }

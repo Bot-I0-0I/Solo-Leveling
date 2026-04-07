@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp, FoodTemplate } from '../db/db';
+import { analyzeNutrition } from '../services/aiService';
 import { Flame, Utensils, Activity, Plus, Trash2, Target, Dumbbell, Droplets, Beef, Wheat, Moon, Save, Download, BarChart3, Sparkles } from 'lucide-react';
 import { cn, getRank } from '../lib/utils';
 import { format, subDays, startOfDay, parseISO } from 'date-fns';
@@ -53,13 +54,7 @@ export function NutritionView() {
     if (!aiQuery) return;
     setIsAnalyzing(true);
     try {
-      const res = await fetch('/api/analyze-nutrition', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: aiQuery, type: activeTab })
-      });
-      if (!res.ok) throw new Error('Failed to analyze');
-      const data = await res.json();
+      const data = await analyzeNutrition(aiQuery, activeTab as 'food' | 'exercise');
       
       setName(data.name || '');
       setCalories(data.calories?.toString() || '');

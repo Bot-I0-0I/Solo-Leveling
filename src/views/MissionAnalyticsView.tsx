@@ -1,14 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp } from '../db/db';
 import { Target, TrendingUp, Activity, Plus, Trash2, BrainCircuit, BarChart3 } from 'lucide-react';
 import { cn, getRank } from '../lib/utils';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
 
 export function MissionAnalyticsView() {
   const userStats = useLiveQuery(() => db.userStats.get(1));
-  const missionLogs = useLiveQuery(() => db.missionLogs.orderBy('date').reverse().limit(30).toArray());
+  
+  const thirtyDaysAgo = useMemo(() => subDays(new Date(), 30).toISOString(), []);
+  const missionLogs = useLiveQuery(() => 
+    db.missionLogs.where('date').aboveOrEqual(thirtyDaysAgo).toArray()
+  );
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<'study' | 'work' | 'personal' | 'fitness'>('study');
@@ -16,6 +20,42 @@ export function MissionAnalyticsView() {
   const [completionRate, setCompletionRate] = useState('100');
   const [noiseLevel, setNoiseLevel] = useState('10');
   const [notes, setNotes] = useState('');
+
+  // Chart Data
+  const chartData = useMemo(() => {
+    if (!missionLogs) return [];
+    
+    const daysMap = new Map();
+    for (let i = 29; i >= 0; i--) {
+      const d = subDays(new Date(), i);
+      const dateStr = format(d, 'MMM dd');
+      daysMap.set(dateStr, {
+        date: dateStr,
+        completionSum: 0,
+        noiseSum: 0,
+        successCount: 0,
+        totalCount: 0
+      });
+    }
+
+    missionLogs.forEach(log => {
+      const dateStr = format(new Date(log.date), 'MMM dd');
+      if (daysMap.has(dateStr)) {
+        const day = daysMap.get(dateStr);
+        day.completionSum += log.completionRate;
+        day.noiseSum += log.noiseLevel;
+        if (log.result === 'success') day.successCount += 1;
+        day.totalCount += 1;
+      }
+    });
+
+    return Array.from(daysMap.values()).map(day => ({
+      date: day.date,
+      completion: day.totalCount > 0 ? Math.round(day.completionSum / day.totalCount) : 0,
+      noise: day.totalCount > 0 ? Math.round(day.noiseSum / day.totalCount) : 0,
+      successRate: day.totalCount > 0 ? Math.round((day.successCount / day.totalCount) * 100) : 0,
+    }));
+  }, [missionLogs]);
 
   if (!userStats) return <div className="opacity-80">Loading Analytics...</div>;
 
@@ -91,14 +131,6 @@ export function MissionAnalyticsView() {
       }
     });
   }
-
-  // Chart Data
-  const chartData = missionLogs?.slice().reverse().map(log => ({
-    date: format(new Date(log.date), 'MMM dd'),
-    completion: log.completionRate,
-    noise: log.noiseLevel,
-    result: log.result
-  })) || [];
 
   const categoryData = [
     { name: 'Study', value: categoryCounts.study, color: '#3b82f6' },
@@ -251,7 +283,7 @@ export function MissionAnalyticsView() {
           <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
             <h3 className="text-lg font-mono text-white mb-4 flex items-center">
               <BarChart3 className="w-5 h-5 mr-2" style={{ color: themeColor }} />
-              COMPLETION VS NOISE TREND
+              30-DAY TRENDS
             </h3>
             <div className="h-[250px] w-full">
               {chartData.length > 0 ? (
@@ -266,6 +298,10 @@ export function MissionAnalyticsView() {
                         <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
                         <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
                       </linearGradient>
+                      <linearGradient id="colorSuccess" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                      </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
                     <XAxis dataKey="date" stroke="#A3A3A3" fontSize={10} tickLine={false} axisLine={false} />
@@ -274,8 +310,9 @@ export function MissionAnalyticsView() {
                       contentStyle={{ backgroundColor: '#0A0A0A', border: '1px solid #262626', borderRadius: '8px' }}
                       itemStyle={{ color: '#fff' }}
                     />
-                    <Area type="monotone" dataKey="completion" stroke={themeColor} fillOpacity={1} fill="url(#colorCompletion)" strokeWidth={2} name="Completion %" />
-                    <Area type="monotone" dataKey="noise" stroke="#ef4444" fillOpacity={1} fill="url(#colorNoise)" strokeWidth={2} name="Noise %" />
+                    <Area type="monotone" dataKey="completion" stroke={themeColor} fillOpacity={1} fill="url(#colorCompletion)" strokeWidth={2} name="Avg Completion %" />
+                    <Area type="monotone" dataKey="successRate" stroke="#22c55e" fillOpacity={1} fill="url(#colorSuccess)" strokeWidth={2} name="Success Rate %" />
+                    <Area type="monotone" dataKey="noise" stroke="#ef4444" fillOpacity={1} fill="url(#colorNoise)" strokeWidth={2} name="Avg Noise %" />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (

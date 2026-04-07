@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { db as cloudDb } from '../firebase';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, onSnapshot, setDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, onSnapshot, setDoc, arrayUnion, deleteDoc, writeBatch } from 'firebase/firestore';
 import { Users, Search, UserPlus, Check, X, Shield, Activity, Swords } from 'lucide-react';
 import { getRank } from '../lib/utils';
 import { toast } from 'sonner';
@@ -214,12 +214,14 @@ export function FriendsView() {
   const handleRequest = async (request: any, accept: boolean) => {
     if (!user) return;
     try {
-      // Update request status
-      await updateDoc(doc(cloudDb, 'friendRequests', request.id), {
-        status: accept ? 'accepted' : 'rejected'
-      });
-
       if (accept) {
+        const batch = writeBatch(cloudDb);
+        
+        // Update request status
+        batch.update(doc(cloudDb, 'friendRequests', request.id), {
+          status: 'accepted'
+        });
+
         // Add to each other's friends list
         const myStatsRef = doc(cloudDb, 'userStats', user.uid);
         const theirStatsRef = doc(cloudDb, 'userStats', request.fromUid);
@@ -230,12 +232,10 @@ export function FriendsView() {
           return;
         }
 
-        await updateDoc(myStatsRef, { friends: arrayUnion(request.fromUid) });
-        try {
-          await updateDoc(theirStatsRef, { friends: arrayUnion(user.uid) });
-        } catch (e) {
-          console.log("Could not update sender's cloud stats directly. They will be updated when they log in.");
-        }
+        batch.update(myStatsRef, { friends: arrayUnion(request.fromUid) });
+        batch.update(theirStatsRef, { friends: arrayUnion(user.uid) });
+
+        await batch.commit();
 
         // Also update local db
         const myFriends = myStatsSnap.data().friends || [];
@@ -246,6 +246,9 @@ export function FriendsView() {
 
         toast.success("Friend request accepted!");
       } else {
+        await updateDoc(doc(cloudDb, 'friendRequests', request.id), {
+          status: 'rejected'
+        });
         toast.success("Friend request rejected.");
       }
     } catch (error) {

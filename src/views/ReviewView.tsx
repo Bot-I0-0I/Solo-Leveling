@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp } from '../db/db';
+import { generateReview } from '../services/aiService';
 import { cn, getRank } from '../lib/utils';
 import { BookOpen, CheckCircle, Plus, Calendar, Wand2 } from 'lucide-react';
 import { format, startOfWeek, subDays, isAfter } from 'date-fns';
@@ -75,14 +76,7 @@ export function ReviewView() {
         notableWins: completedQuests.slice(0, 3).map(q => q.title)
       };
 
-      const res = await fetch('/api/generate-review', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stats })
-      });
-      
-      if (!res.ok) throw new Error('Failed to generate review');
-      const data = await res.json();
+      const data = await generateReview(stats);
 
       setAccomplishments(data.accomplishments || '');
       setChallenges(data.challenges || '');

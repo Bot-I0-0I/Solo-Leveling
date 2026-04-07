@@ -193,8 +193,8 @@ service cloud.firestore {
     }
 
     function isFriendRequestAccepted(uid1, uid2) {
-      return (exists(/databases/$(database)/documents/friendRequests/$(uid1 + '_' + uid2)) && get(/databases/$(database)/documents/friendRequests/$(uid1 + '_' + uid2)).data.status == 'accepted') ||
-             (exists(/databases/$(database)/documents/friendRequests/$(uid2 + '_' + uid1)) && get(/databases/$(database)/documents/friendRequests/$(uid2 + '_' + uid1)).data.status == 'accepted');
+      return (existsAfter(/databases/$(database)/documents/friendRequests/$(uid1 + '_' + uid2)) && getAfter(/databases/$(database)/documents/friendRequests/$(uid1 + '_' + uid2)).data.status == 'accepted') ||
+             (existsAfter(/databases/$(database)/documents/friendRequests/$(uid2 + '_' + uid1)) && getAfter(/databases/$(database)/documents/friendRequests/$(uid2 + '_' + uid1)).data.status == 'accepted');
     }
 
     // ===============================================================
@@ -218,7 +218,7 @@ service cloud.firestore {
              validStringLength('lastResetDate', 10, 10) &&
              data.uid == request.auth.uid &&
              isValidOptionalString('name', 0, 100) &&
-             isValidOptionalString('avatar', 0, 500) &&
+             isValidOptionalString('avatar', 0, 1048576) &&
              isValidOptionalNumber('height') &&
              isValidOptionalNumber('age') &&
              (!( 'gender' in data ) || data.gender in ['male', 'female', 'other']) &&
@@ -228,7 +228,7 @@ service cloud.firestore {
              (!( 'friends' in data ) || data.friends is list) &&
              isValidOptionalString('role', 0, 100) &&
              isValidOptionalString('uiTheme', 0, 100) &&
-             isValidOptionalString('backgroundImage', 0, 500) &&
+             isValidOptionalString('backgroundImage', 0, 1048576) &&
              (!( 'useRankTheme' in data ) || data.useRankTheme is bool) &&
              isValidOptionalString('selectedColor', 0, 50);
     }
@@ -245,7 +245,7 @@ service cloud.firestore {
              validStringLength('name', 1, 100) &&
              data.level is number && data.level >= 1 &&
              validStringLength('rank', 1, 50) &&
-             isValidOptionalString('avatar', 0, 500) &&
+             isValidOptionalString('avatar', 0, 1048576) &&
              (!( 'isGuest' in data ) || data.isGuest is bool) &&
              isValidOptionalString('lastActive', 10, 30);
     }

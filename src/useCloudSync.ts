@@ -73,7 +73,7 @@ export function useCloudSync() {
     const newObj = { ...obj };
     delete newObj.id;
     Object.keys(newObj).forEach(key => {
-      if (newObj[key] === undefined || Number.isNaN(newObj[key])) {
+      if (newObj[key] === undefined || newObj[key] === null || Number.isNaN(newObj[key])) {
         delete newObj[key];
       }
     });

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp } from '../db/db';
+import { generateQuests } from '../services/aiService';
 import { cn, getRank } from '../lib/utils';
 import { AlertTriangle, CheckCircle, Circle, Plus, Trash2, FastForward, Repeat, Save, Trophy, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -98,24 +99,18 @@ export function QuestView() {
     if (!aiGoal) return;
     setIsGenerating(true);
     try {
-      const res = await fetch('/api/generate-quests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goal: aiGoal })
-      });
-      if (!res.ok) throw new Error('Failed to generate quests');
-      const data = await res.json();
+      const data = await generateQuests(aiGoal);
       
       for (const q of data.quests) {
         await db.quests.add({
-          title: q.title,
-          attribute: q.attribute,
-          targetValue: q.targetValue,
+          title: q.title || 'Generated Quest',
+          attribute: q.attribute || 'STR',
+          targetValue: q.targetValue || 1,
           currentValue: 0,
           type: 'daily',
           completed: false,
           date: today,
-          baseReward: q.baseReward,
+          baseReward: q.baseReward || 10,
           isRecurring: false
         });
       }
