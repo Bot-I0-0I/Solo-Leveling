@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp, Task } from '../db/db';
 import { cn, getRank } from '../lib/utils';
-import { CalendarDays, CheckCircle, Circle, Plus, Clock, Repeat, AlertTriangle } from 'lucide-react';
+import { CalendarDays, CheckCircle, Circle, Plus, Clock, Repeat, AlertTriangle, Sparkles } from 'lucide-react';
 import { format, isBefore, startOfDay } from 'date-fns';
+import { toast } from 'sonner';
 
 export function SchedulerView() {
   const userStats = useLiveQuery(() => db.userStats.get(1));
@@ -13,6 +14,8 @@ export function SchedulerView() {
   const [time, setTime] = useState('12:00');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [xpReward, setXpReward] = useState(50);
+  const [aiGoal, setAiGoal] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
   const rankColor = getRank(level).color;
@@ -72,6 +75,39 @@ export function SchedulerView() {
   const clearCompleted = async () => {
     const completedIds = completedTasks.map(t => t.id!);
     await db.tasks.bulkDelete(completedIds);
+  };
+
+  const handleGenerateTasks = async () => {
+    if (!aiGoal) return;
+    setIsGenerating(true);
+    try {
+      const res = await fetch('/api/generate-tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal: aiGoal, date })
+      });
+      if (!res.ok) throw new Error('Failed to generate tasks');
+      const data = await res.json();
+      
+      for (const t of data.tasks) {
+        await db.tasks.add({
+          title: t.title,
+          date: t.date,
+          time: t.time,
+          priority: t.priority,
+          completed: false,
+          xpReward: t.xpReward,
+          recurrence: 'none'
+        });
+      }
+      setAiGoal('');
+      toast.success("AI generated directives added successfully!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to generate directives with AI.");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   if (!tasks) return <div className="opacity-80">Loading Directives...</div>;
@@ -210,6 +246,37 @@ export function SchedulerView() {
         <div>
           <form onSubmit={handleAddTask} className="bg-[#141414] border border-[#262626] rounded-xl p-6 sticky top-8">
             <h4 className="text-sm font-mono text-white mb-4">NEW DIRECTIVE</h4>
+            
+            {/* AI Generator */}
+            <div className="mb-6 p-4 bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-xl">
+              <label className="block text-xs font-mono text-blue-400 mb-2 flex items-center">
+                <Sparkles className="w-3 h-3 mr-1" /> AI BREAKDOWN
+              </label>
+              <div className="flex flex-col gap-2">
+                <input 
+                  type="text" 
+                  value={aiGoal}
+                  onChange={(e) => setAiGoal(e.target.value)}
+                  className="w-full bg-[#0A0A0A] border border-blue-500/30 rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-blue-500"
+                  placeholder="e.g., Plan a birthday party"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleGenerateTasks();
+                    }
+                  }}
+                />
+                <button 
+                  type="button"
+                  onClick={handleGenerateTasks}
+                  disabled={isGenerating || !aiGoal}
+                  className="w-full bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 border border-blue-500/50 px-4 py-2 rounded-md font-mono text-sm transition-colors disabled:opacity-50"
+                >
+                  {isGenerating ? 'GENERATING...' : 'BREAK DOWN INTO TASKS'}
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-mono text-[#A3A3A3] mb-1">TASK TITLE</label>

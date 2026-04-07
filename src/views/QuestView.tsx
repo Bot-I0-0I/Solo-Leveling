@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp } from '../db/db';
 import { cn, getRank } from '../lib/utils';
-import { AlertTriangle, CheckCircle, Circle, Plus, Trash2, FastForward, Repeat, Save, Trophy } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Circle, Plus, Trash2, FastForward, Repeat, Save, Trophy, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -17,6 +17,8 @@ export function QuestView() {
   const [newQuestTarget, setNewQuestTarget] = useState(1);
   const [newQuestReward, setNewQuestReward] = useState(50);
   const [isRecurring, setIsRecurring] = useState(false);
+  const [aiGoal, setAiGoal] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const isPenalty = false; // Penalty system removed
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
@@ -92,6 +94,41 @@ export function QuestView() {
     setIsRecurring(template.isRecurring || false);
   };
 
+  const handleGenerateQuests = async () => {
+    if (!aiGoal) return;
+    setIsGenerating(true);
+    try {
+      const res = await fetch('/api/generate-quests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal: aiGoal })
+      });
+      if (!res.ok) throw new Error('Failed to generate quests');
+      const data = await res.json();
+      
+      for (const q of data.quests) {
+        await db.quests.add({
+          title: q.title,
+          attribute: q.attribute,
+          targetValue: q.targetValue,
+          currentValue: 0,
+          type: 'daily',
+          completed: false,
+          date: today,
+          baseReward: q.baseReward,
+          isRecurring: false
+        });
+      }
+      setAiGoal('');
+      toast.success("AI generated quests added successfully!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to generate quests with AI.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   if (!quests) return <div>Loading Quests...</div>;
 
   const dailyQuests = quests.filter(q => q.type === 'daily');
@@ -117,6 +154,35 @@ export function QuestView() {
         </div>
 
         <div className="grid gap-4">
+          {/* AI Generator */}
+          <div className="mb-2 p-4 bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-xl">
+            <label className="block text-xs font-mono text-blue-400 mb-2 flex items-center">
+              <Sparkles className="w-3 h-3 mr-1" /> AI QUEST GENERATOR
+            </label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input 
+                type="text" 
+                value={aiGoal}
+                onChange={(e) => setAiGoal(e.target.value)}
+                className="flex-1 bg-[#0A0A0A] border border-blue-500/30 rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-blue-500"
+                placeholder="e.g., I want to have a productive morning"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleGenerateQuests();
+                  }
+                }}
+              />
+              <button 
+                onClick={handleGenerateQuests}
+                disabled={isGenerating || !aiGoal}
+                className="bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 border border-blue-500/50 px-4 py-2 rounded-md font-mono text-sm transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                {isGenerating ? 'GENERATING...' : 'GENERATE'}
+              </button>
+            </div>
+          </div>
+
           {dailyQuests.map(quest => (
             <QuestCard 
               key={quest.id} 

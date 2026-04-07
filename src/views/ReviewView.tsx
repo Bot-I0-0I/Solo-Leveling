@@ -66,43 +66,27 @@ export function ReviewView() {
       const income = weekLedger.filter(l => l.type === 'income').reduce((acc, l) => acc + l.amount, 0);
       const expenses = weekLedger.filter(l => l.type === 'expense').reduce((acc, l) => acc + l.amount, 0);
 
-      // Generate text
-      let accText = `• Completed ${completedQuests.length} quests this week.\n`;
-      if (workouts.length > 0) {
-        accText += `• Logged ${workouts.length} workout sessions.\n`;
-      }
-      if (income > 0) {
-        accText += `• Earned $${income.toFixed(2)} in income.\n`;
-      }
-      if (completedQuests.length > 0) {
-        accText += `• Notable wins: ${completedQuests.slice(0, 3).map(q => q.title).join(', ')}.\n`;
-      }
+      const stats = {
+        completedQuests: completedQuests.length,
+        failedQuests: failedQuests.length,
+        workouts: workouts.length,
+        income,
+        expenses,
+        notableWins: completedQuests.slice(0, 3).map(q => q.title)
+      };
 
-      let chalText = '';
-      if (failedQuests.length > 0) {
-        chalText += `• Missed ${failedQuests.length} quests (e.g., ${failedQuests.slice(0, 2).map(q => q.title).join(', ')}).\n`;
-      }
-      if (expenses > income) {
-        chalText += `• Expenses ($${expenses.toFixed(2)}) exceeded income ($${income.toFixed(2)}).\n`;
-      }
-      if (workouts.length < 3) {
-        chalText += `• Low physical activity (${workouts.length} sessions).\n`;
-      }
-      if (!chalText) {
-        chalText = "• No major challenges recorded in the system. Everything ran smoothly.\n";
-      }
+      const res = await fetch('/api/generate-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stats })
+      });
+      
+      if (!res.ok) throw new Error('Failed to generate review');
+      const data = await res.json();
 
-      let intText = `• Complete all daily recurring quests.\n`;
-      if (workouts.length < 3) {
-        intText += `• Increase physical activity to at least 3 sessions.\n`;
-      }
-      if (expenses > income) {
-        intText += `• Reduce unnecessary expenses to maintain positive cash flow.\n`;
-      }
-
-      setAccomplishments(accText);
-      setChallenges(chalText);
-      setIntentions(intText);
+      setAccomplishments(data.accomplishments || '');
+      setChallenges(data.challenges || '');
+      setIntentions(data.intentions || '');
     } catch (error) {
       console.error("Error auto-generating review:", error);
     } finally {

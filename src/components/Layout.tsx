@@ -43,9 +43,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const mobileNavItems = [
     { id: 'status', icon: Activity, label: 'Status' },
-    { id: 'quests', icon: Shield, label: 'Quests' },
+    { id: 'tactical', icon: BrainCircuit, label: 'Mission Analytics' },
     { id: 'hub', icon: LayoutGrid, label: 'Hub' },
-    { id: 'store', icon: ShoppingCart, label: 'System' },
+    { id: 'nutrition', icon: Flame, label: 'Metabolism' },
     { id: 'settings', icon: Settings, label: 'Settings' },
   ] as const;
 
