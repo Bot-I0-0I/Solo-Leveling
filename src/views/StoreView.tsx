@@ -15,7 +15,7 @@ export function StoreView() {
   const [newItemBoost, setNewItemBoost] = useState('');
   const [isAdding, setIsAdding] = useState(false);
 
-  const isPenalty = userStats?.penaltyActive;
+  const isPenalty = false; // Penalty system removed
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
   const rankColor = getRank(level).color;
   const themeColor = userStats?.selectedColor || rankColor;
@@ -91,14 +91,7 @@ export function StoreView() {
         </div>
       </header>
 
-      {isPenalty && (
-        <div className="bg-red-950/30 border border-red-900 rounded-xl p-6 flex items-center justify-center text-red-500">
-          <Lock className="w-6 h-6 mr-3" />
-          <span className="font-mono font-bold tracking-widest">STORE LOCKED DUE TO PENALTY STATE</span>
-        </div>
-      )}
-
-      <div className={cn("grid grid-cols-1 lg:grid-cols-2 gap-8", isPenalty && "opacity-50 pointer-events-none")}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Store */}
         <div className="space-y-6">
           <div className="flex justify-between items-center">
@@ -193,10 +186,10 @@ export function StoreView() {
 
           <div className="grid gap-4">
             {availableItems.map(item => (
-              <div key={item.id} className="bg-[#141414] border border-[#262626] rounded-xl p-4 flex justify-between items-center hover:border-[#333] transition-colors group">
-                <div>
-                  <h4 className="font-mono text-white">{item.name}</h4>
-                  <div className="flex gap-2 mt-1">
+              <div key={item.id} className="bg-[#141414] border border-[#262626] rounded-xl p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 hover:border-[#333] transition-colors group">
+                <div className="w-full sm:w-auto">
+                  <h4 className="font-mono text-white truncate">{item.name}</h4>
+                  <div className="flex flex-wrap gap-2 mt-1">
                     {Object.entries(item.attributeBoosts).map(([attr, val]) => (
                       <span key={attr} className="text-xs font-mono text-[#A3A3A3] bg-[#0A0A0A] px-2 py-0.5 rounded border border-[#262626]">
                         +{val as number} {attr}
@@ -204,10 +197,10 @@ export function StoreView() {
                     ))}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 self-end sm:self-auto">
                   <button 
                     onClick={() => handleDeleteShopItem(item.id!)}
-                    className="text-[#A3A3A3] hover:text-red-500 p-2 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                    className="text-[#A3A3A3] hover:text-red-500 p-2 rounded-md transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                     title="Delete Item"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -240,17 +233,17 @@ export function StoreView() {
           <div className="grid gap-4">
             {inventory.map(item => (
               <div key={item.id} className={cn(
-                "bg-[#141414] border rounded-xl p-4 flex justify-between items-center transition-colors group",
+                "bg-[#141414] border rounded-xl p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 transition-colors group",
                 item.equipped ? "bg-[#141414]" : "border-[#262626]"
               )} style={item.equipped ? { borderColor: `${themeColor}50`, backgroundColor: `${themeColor}05` } : {}}>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-mono text-white">{item.name}</h4>
+                <div className="w-full sm:w-auto">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="font-mono text-white truncate">{item.name}</h4>
                     {item.type === 'shadow' && (
                       <span className="text-[10px] font-mono text-purple-400 border border-purple-900 px-1 rounded">SHADOW</span>
                     )}
                   </div>
-                  <div className="flex gap-2 mt-1">
+                  <div className="flex flex-wrap gap-2 mt-1">
                     {Object.entries(item.attributeBoosts).map(([attr, val]) => (
                       <span key={attr} className="text-xs font-mono text-[#A3A3A3] bg-[#0A0A0A] px-2 py-0.5 rounded border border-[#262626]">
                         +{val as number} {attr}
@@ -258,10 +251,10 @@ export function StoreView() {
                     ))}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 self-end sm:self-auto">
                   <button 
                     onClick={() => handleDeleteInventoryItem(item.id!)}
-                    className="text-[#A3A3A3] hover:text-red-500 p-2 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                    className="text-[#A3A3A3] hover:text-red-500 p-2 rounded-md transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                     title="Delete Item"
                   >
                     <Trash2 className="w-4 h-4" />

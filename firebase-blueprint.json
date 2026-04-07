@@ -12,7 +12,6 @@
         "SEN": { "type": "number", "description": "Sense" },
         "credits": { "type": "number", "description": "Available credits" },
         "xp": { "type": "number", "description": "Experience points" },
-        "penaltyActive": { "type": "boolean", "description": "If penalty is active" },
         "lastResetDate": { "type": "string", "description": "Last reset date (YYYY-MM-DD)" },
         "name": { "type": "string", "description": "User's name" },
         "avatar": { "type": "string", "description": "User's avatar URL" },
@@ -25,7 +24,7 @@
         "friends": { "type": "array", "items": { "type": "string" }, "description": "List of friend UIDs" },
         "uid": { "type": "string", "description": "Firebase Auth UID" }
       },
-      "required": ["STR", "VIT", "AGI", "INT", "SEN", "credits", "xp", "penaltyActive", "lastResetDate", "uid"]
+      "required": ["STR", "VIT", "AGI", "INT", "SEN", "credits", "xp", "lastResetDate", "uid"]
     },
     "PublicProfile": {
       "title": "PublicProfile",
@@ -37,7 +36,8 @@
         "name": { "type": "string", "description": "User's name" },
         "avatar": { "type": "string", "description": "User's avatar URL" },
         "level": { "type": "number", "description": "User's level" },
-        "rank": { "type": "string", "description": "User's rank" }
+        "rank": { "type": "string", "description": "User's rank" },
+        "isGuest": { "type": "boolean", "description": "Whether the user is a guest" }
       },
       "required": ["uid", "email", "name", "level", "rank"]
     },
@@ -65,7 +65,7 @@
         "attribute": { "type": "string", "enum": ["STR", "VIT", "AGI", "INT", "SEN"], "description": "Attribute to boost" },
         "targetValue": { "type": "number", "description": "Target value to complete" },
         "currentValue": { "type": "number", "description": "Current value" },
-        "type": { "type": "string", "enum": ["daily", "penalty"], "description": "Quest type" },
+        "type": { "type": "string", "enum": ["daily"], "description": "Quest type" },
         "completed": { "type": "boolean", "description": "If quest is completed" },
         "date": { "type": "string", "description": "Date of quest (YYYY-MM-DD)" },
         "baseReward": { "type": "number", "description": "Base reward for completing" },
@@ -207,6 +207,22 @@
         "uid": { "type": "string", "description": "Firebase Auth UID" }
       },
       "required": ["date", "game", "focusArea", "result", "kills", "deaths", "uid"]
+    },
+    "MissionLog": {
+      "title": "MissionLog",
+      "description": "Log of a completed mission.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "description": "Date of the mission (ISO string)" },
+        "title": { "type": "string", "description": "Title of the mission" },
+        "category": { "type": "string", "enum": ["study", "work", "personal", "fitness"], "description": "Category of the mission" },
+        "result": { "type": "string", "enum": ["success", "failure", "partial"], "description": "Result of the mission" },
+        "completionRate": { "type": "number", "description": "Completion rate (0-100)" },
+        "noiseLevel": { "type": "number", "description": "Noise level (0-100)" },
+        "notes": { "type": "string", "description": "Optional notes" },
+        "uid": { "type": "string", "description": "Firebase Auth UID" }
+      },
+      "required": ["date", "title", "category", "result", "completionRate", "noiseLevel", "uid"]
     }
   },
   "firestore": {
@@ -261,6 +277,10 @@
     "friendRequests/{requestId}": {
       "schema": { "$ref": "#/entities/FriendRequest" },
       "description": "Friend requests."
+    },
+    "missionLogs/{logId}": {
+      "schema": { "$ref": "#/entities/MissionLog" },
+      "description": "User mission logs."
     }
   }
 }

@@ -1,20 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { db as cloudDb } from '../firebase';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, onSnapshot, setDoc, arrayUnion } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc, onSnapshot, setDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
 import { Users, Search, UserPlus, Check, X, Shield, Activity, Swords } from 'lucide-react';
 import { getRank } from '../lib/utils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db as localDb } from '../db/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { differenceInMinutes } from 'date-fns';
+
+const isOnline = (lastActive?: string) => {
+  if (!lastActive) return false;
+  return differenceInMinutes(new Date(), new Date(lastActive)) < 5;
+};
 
 export function FriendsView() {
   const { user } = useAuth();
-  const [searchEmail, setSearchEmail] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [friendRequests, setFriendRequests] = useState<any[]>([]);
+  const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
+  const [outgoingRequests, setOutgoingRequests] = useState<any[]>([]);
   const [friends, setFriends] = useState<any[]>([]);
   const [selectedFriend, setSelectedFriend] = useState<any | null>(null);
   
@@ -26,20 +33,97 @@ export function FriendsView() {
   useEffect(() => {
     if (!user) return;
 
-    // Listen for friend requests
-    const q = query(
+    // Listen for incoming friend requests
+    const qIncoming = query(
       collection(cloudDb, 'friendRequests'),
       where('toUid', '==', user.uid),
       where('status', '==', 'pending')
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribeIncoming = onSnapshot(qIncoming, (snapshot) => {
       const reqs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setFriendRequests(reqs);
+      setIncomingRequests(reqs);
     });
 
-    return () => unsubscribe();
+    // Listen for outgoing friend requests
+    const qOutgoing = query(
+      collection(cloudDb, 'friendRequests'),
+      where('fromUid', '==', user.uid),
+      where('status', '==', 'pending')
+    );
+
+    const unsubscribeOutgoing = onSnapshot(qOutgoing, (snapshot) => {
+      const reqs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setOutgoingRequests(reqs);
+    });
+
+    // Listen for accepted outgoing friend requests
+    const qAccepted = query(
+      collection(cloudDb, 'friendRequests'),
+      where('fromUid', '==', user.uid),
+      where('status', '==', 'accepted')
+    );
+
+    const unsubscribeAccepted = onSnapshot(qAccepted, async (snapshot) => {
+      for (const docSnap of snapshot.docs) {
+        const req = { id: docSnap.id, ...docSnap.data() } as any;
+        
+        // Add to local friends
+        const localStats = await localDb.userStats.get(1);
+        if (localStats) {
+          const myFriends = localStats.friends || [];
+          if (!myFriends.includes(req.toUid)) {
+            await localDb.userStats.update(1, {
+              friends: [...myFriends, req.toUid]
+            });
+            
+            // Also update cloud if possible
+            try {
+              await setDoc(doc(cloudDb, 'userStats', user.uid), {
+                friends: arrayUnion(req.toUid)
+              }, { merge: true });
+            } catch (e) {
+              console.error("Failed to update cloud stats:", e);
+            }
+          }
+        }
+        
+        // Delete the request
+        try {
+          await deleteDoc(doc(cloudDb, 'friendRequests', req.id));
+        } catch (e) {
+          console.error("Failed to delete accepted request:", e);
+        }
+      }
+    });
+
+    // Listen for rejected outgoing friend requests
+    const qRejected = query(
+      collection(cloudDb, 'friendRequests'),
+      where('fromUid', '==', user.uid),
+      where('status', '==', 'rejected')
+    );
+
+    const unsubscribeRejected = onSnapshot(qRejected, async (snapshot) => {
+      for (const docSnap of snapshot.docs) {
+        try {
+          await deleteDoc(doc(cloudDb, 'friendRequests', docSnap.id));
+        } catch (e) {
+          console.error("Failed to delete rejected request:", e);
+        }
+      }
+    });
+
+    return () => {
+      unsubscribeIncoming();
+      unsubscribeOutgoing();
+      unsubscribeAccepted();
+      unsubscribeRejected();
+    };
   }, [user]);
+
+  const friendUids = userStats?.friends || [];
+  const friendUidsString = JSON.stringify(friendUids);
 
   useEffect(() => {
     if (!user) return;
@@ -47,23 +131,17 @@ export function FriendsView() {
     // Fetch friends' public profiles
     const fetchFriends = async () => {
       try {
-        const statsDoc = await getDoc(doc(cloudDb, 'userStats', user.uid));
-        if (statsDoc.exists()) {
-          const data = statsDoc.data();
-          const friendUids = data.friends || [];
-          
-          if (friendUids.length > 0) {
-            const friendsData = [];
-            for (const fUid of friendUids) {
-              const pDoc = await getDoc(doc(cloudDb, 'publicProfiles', fUid));
-              if (pDoc.exists()) {
-                friendsData.push({ id: pDoc.id, ...pDoc.data() });
-              }
+        if (friendUids.length > 0) {
+          const friendsData = [];
+          for (const fUid of friendUids) {
+            const pDoc = await getDoc(doc(cloudDb, 'publicProfiles', fUid));
+            if (pDoc.exists()) {
+              friendsData.push({ id: pDoc.id, ...pDoc.data() });
             }
-            setFriends(friendsData);
-          } else {
-            setFriends([]);
           }
+          setFriends(friendsData);
+        } else {
+          setFriends([]);
         }
       } catch (error) {
         console.error("Error fetching friends:", error);
@@ -71,20 +149,26 @@ export function FriendsView() {
     };
 
     fetchFriends();
-  }, [user, friendRequests]); // Re-fetch when requests change (accepted)
+  }, [user, friendUidsString]); // Only depend on the stringified array to prevent infinite loops
 
   const handleSearch = async () => {
-    if (!searchEmail.trim() || !user) return;
+    if (!searchQuery.trim() || !user) return;
     setIsSearching(true);
     try {
-      const q = query(collection(cloudDb, 'publicProfiles'), where('email', '==', searchEmail.trim()));
+      let q;
+      if (searchQuery.trim().includes('@')) {
+        q = query(collection(cloudDb, 'publicProfiles'), where('email', '==', searchQuery.trim()));
+      } else {
+        q = query(collection(cloudDb, 'publicProfiles'), where('uid', '==', searchQuery.trim()));
+      }
+      
       const snapshot = await getDocs(q);
       const results = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .map(doc => ({ id: doc.id, ...(doc.data() as any) }))
         .filter(doc => doc.id !== user.uid); // Don't show self
       setSearchResults(results);
       if (results.length === 0) {
-        toast.error("No user found with that email.");
+        toast.error("No user found with that identifier.");
       }
     } catch (error) {
       console.error("Search error:", error);
@@ -111,18 +195,19 @@ export function FriendsView() {
       await setDoc(docRef, {
         fromUid: user.uid,
         toUid: targetUser.uid,
-        fromEmail: user.email,
-        toEmail: targetUser.email,
+        fromEmail: user.email || `guest_${user.uid.slice(0, 8)}@system.local`,
+        toEmail: targetUser.email || `guest_${targetUser.uid.slice(0, 8)}@system.local`,
         fromName: userStats?.name || user.email?.split('@')[0] || 'Unknown',
+        toName: targetUser.name || targetUser.email?.split('@')[0] || 'Unknown',
         status: 'pending',
         createdAt: new Date().toISOString()
       });
       toast.success("Friend request sent!");
       setSearchResults([]);
-      setSearchEmail('');
-    } catch (error) {
+      setSearchQuery('');
+    } catch (error: any) {
       console.error("Error sending request:", error);
-      toast.error("Failed to send friend request.");
+      toast.error("Failed to send friend request: " + error.message);
     }
   };
 
@@ -139,13 +224,23 @@ export function FriendsView() {
         const myStatsRef = doc(cloudDb, 'userStats', user.uid);
         const theirStatsRef = doc(cloudDb, 'userStats', request.fromUid);
 
+        const myStatsSnap = await getDoc(myStatsRef);
+        if (!myStatsSnap.exists()) {
+          toast.error("Please sync your data in Settings first.");
+          return;
+        }
+
         await updateDoc(myStatsRef, { friends: arrayUnion(request.fromUid) });
-        await updateDoc(theirStatsRef, { friends: arrayUnion(user.uid) });
+        try {
+          await updateDoc(theirStatsRef, { friends: arrayUnion(user.uid) });
+        } catch (e) {
+          console.log("Could not update sender's cloud stats directly. They will be updated when they log in.");
+        }
 
         // Also update local db
-        const myStatsSnap = await getDoc(myStatsRef);
-        if (myStatsSnap.exists()) {
-          const myFriends = myStatsSnap.data().friends || [];
+        const myFriends = myStatsSnap.data().friends || [];
+        if (!myFriends.includes(request.fromUid)) {
+          myFriends.push(request.fromUid);
           await localDb.userStats.update(1, { friends: myFriends } as any);
         }
 
@@ -159,11 +254,11 @@ export function FriendsView() {
     }
   };
 
-  const viewFriendStats = async (friendId: string) => {
+  const viewFriendStats = async (friend: any) => {
     try {
-      const statsDoc = await getDoc(doc(cloudDb, 'userStats', friendId));
+      const statsDoc = await getDoc(doc(cloudDb, 'userStats', friend.id));
       if (statsDoc.exists()) {
-        setSelectedFriend(statsDoc.data());
+        setSelectedFriend({ ...friend, ...statsDoc.data() });
       } else {
         toast.error("Could not load friend's stats.");
       }
@@ -183,15 +278,37 @@ export function FriendsView() {
         <p className="text-[#A3A3A3] text-sm mt-1 font-mono uppercase tracking-widest">Allies & Connections</p>
       </header>
 
+      {/* My UID */}
+      <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
+        <h3 className="text-sm font-mono text-white mb-2">YOUR SYSTEM IDENTIFIER</h3>
+        <div className="flex items-center gap-3">
+          <code className="flex-1 bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-xs select-all">
+            {user?.uid}
+          </code>
+          <button 
+            onClick={() => {
+              navigator.clipboard.writeText(user?.uid || '');
+              toast.success("UID copied to clipboard!");
+            }}
+            className="text-xs font-mono bg-[#262626] hover:bg-[#333] text-white px-3 py-2 rounded-md transition-colors"
+          >
+            COPY
+          </button>
+        </div>
+        <p className="text-[10px] font-mono text-[#A3A3A3] mt-2 uppercase tracking-tighter">
+          Share this UID with others to let them add you as an ally.
+        </p>
+      </div>
+
       {/* Search Users */}
       <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
         <h3 className="text-sm font-mono text-white mb-4">FIND ALLIES</h3>
         <div className="flex gap-2">
           <input
-            type="email"
-            value={searchEmail}
-            onChange={(e) => setSearchEmail(e.target.value)}
-            placeholder="Enter user email..."
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Enter user email or UID..."
             className="flex-1 bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#333]"
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           />
@@ -234,15 +351,15 @@ export function FriendsView() {
         )}
       </div>
 
-      {/* Friend Requests */}
-      {friendRequests.length > 0 && (
+      {/* Incoming Friend Requests */}
+      {incomingRequests.length > 0 && (
         <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
           <h3 className="text-sm font-mono text-white mb-4 flex items-center">
             <Shield className="w-4 h-4 mr-2 text-yellow-500" />
-            PENDING REQUESTS
+            INCOMING REQUESTS
           </h3>
           <div className="space-y-2">
-            {friendRequests.map(req => (
+            {incomingRequests.map(req => (
               <div key={req.id} className="flex items-center justify-between bg-[#0A0A0A] p-3 rounded-md border border-[#262626]">
                 <div>
                   <div className="text-sm font-mono text-white">{req.fromName}</div>
@@ -268,6 +385,38 @@ export function FriendsView() {
         </div>
       )}
 
+      {/* Outgoing Friend Requests */}
+      {outgoingRequests.length > 0 && (
+        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
+          <h3 className="text-sm font-mono text-white mb-4 flex items-center">
+            <Shield className="w-4 h-4 mr-2 text-blue-500" />
+            OUTGOING REQUESTS
+          </h3>
+          <div className="space-y-2">
+            {outgoingRequests.map(req => (
+              <div key={req.id} className="flex items-center justify-between bg-[#0A0A0A] p-3 rounded-md border border-[#262626]">
+                <div>
+                  <div className="text-sm font-mono text-white">{req.toName || req.toEmail}</div>
+                  <div className="text-[10px] font-mono text-[#A3A3A3]">Pending...</div>
+                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      await updateDoc(doc(cloudDb, 'friendRequests', req.id), { status: 'rejected' });
+                    } catch (e) {
+                      console.error(e);
+                    }
+                  }}
+                  className="p-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Friends List */}
       <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
         <h3 className="text-sm font-mono text-white mb-4">ALLIES</h3>
@@ -280,18 +429,25 @@ export function FriendsView() {
             {friends.map(friend => (
               <button
                 key={friend.id}
-                onClick={() => viewFriendStats(friend.id)}
-                className="flex items-center gap-4 bg-[#0A0A0A] p-4 rounded-xl border border-[#262626] hover:border-[#333] transition-colors text-left"
+                onClick={() => viewFriendStats(friend)}
+                className="flex items-center gap-4 bg-[#0A0A0A] p-4 rounded-xl border border-[#262626] hover:border-[#333] transition-colors text-left relative"
               >
-                {friend.avatar ? (
-                  <img src={friend.avatar} alt="avatar" className="w-12 h-12 rounded-full border border-[#333]" />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-[#262626] flex items-center justify-center">
-                    <Users className="w-6 h-6 text-[#A3A3A3]" />
-                  </div>
-                )}
+                <div className="relative">
+                  {friend.avatar ? (
+                    <img src={friend.avatar} alt="avatar" className="w-12 h-12 rounded-full border border-[#333]" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-[#262626] flex items-center justify-center">
+                      <Users className="w-6 h-6 text-[#A3A3A3]" />
+                    </div>
+                  )}
+                  {isOnline(friend.lastActive) && (
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#0A0A0A] rounded-full"></div>
+                  )}
+                </div>
                 <div>
-                  <div className="text-sm font-mono text-white">{friend.name}</div>
+                  <div className="text-sm font-mono text-white flex items-center gap-2">
+                    {friend.name}
+                  </div>
                   <div className="text-xs font-mono text-[#A3A3A3] mt-1">Level {friend.level} • {friend.rank}</div>
                 </div>
               </button>

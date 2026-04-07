@@ -18,7 +18,7 @@ export function QuestView() {
   const [newQuestReward, setNewQuestReward] = useState(50);
   const [isRecurring, setIsRecurring] = useState(false);
 
-  const isPenalty = userStats?.penaltyActive;
+  const isPenalty = false; // Penalty system removed
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
   const rankColor = getRank(level).color;
   const themeColor = userStats?.selectedColor || rankColor;
@@ -31,7 +31,7 @@ export function QuestView() {
 
     await db.quests.update(questId, { currentValue: newVal, completed });
 
-    if (completed) {
+        if (completed) {
       // Add XP
       if (userStats) {
         const xpGain = baseReward;
@@ -43,11 +43,6 @@ export function QuestView() {
           description: `Attribute: ${attr}`,
           duration: 3000,
         });
-
-        // If it was a penalty quest, clear penalty state
-        if (type === 'penalty') {
-          await db.userStats.update(1, { penaltyActive: false });
-        }
       }
     }
   };
@@ -99,7 +94,6 @@ export function QuestView() {
 
   if (!quests) return <div>Loading Quests...</div>;
 
-  const penaltyQuests = quests.filter(q => q.type === 'penalty');
   const dailyQuests = quests.filter(q => q.type === 'daily');
 
   return (
@@ -116,32 +110,8 @@ export function QuestView() {
         </p>
       </header>
 
-      {isPenalty && (
-        <div className="bg-red-950/30 border border-red-900 rounded-xl p-6 mb-8">
-          <div className="flex items-center text-red-500 mb-4">
-            <AlertTriangle className="w-6 h-6 mr-2" />
-            <h3 className="text-xl font-mono font-bold">WARNING: QUEST FAILED</h3>
-          </div>
-          <p className="text-red-400/80 text-sm mb-6 font-mono">
-            You failed to complete yesterday's daily quests. The system has entered a Penalty State. The Reward Shop is locked. Complete the penalty task to restore access.
-          </p>
-          
-          <div className="grid gap-4">
-            {penaltyQuests.map(quest => (
-              <QuestCard 
-                key={quest.id} 
-                quest={quest} 
-                themeColor={themeColor}
-                onProgress={() => handleComplete(quest.id!, quest.currentValue, quest.targetValue, quest.attribute, quest.baseReward, quest.type)} 
-                onMax={() => handleComplete(quest.id!, quest.currentValue, quest.targetValue, quest.attribute, quest.baseReward, quest.type, true)}
-                onDelete={() => handleDeleteQuest(quest.id!)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className={cn("space-y-6", isPenalty && "opacity-50 pointer-events-none")}>
+      {/* Active Quests */}
+      <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h3 className="text-xl font-mono text-white">ACTIVE QUESTS</h3>
         </div>
@@ -308,30 +278,30 @@ const QuestCard: React.FC<{ quest: any, themeColor: string, onProgress: () => vo
             )}
           </AnimatePresence>
         </button>
-        <div className="flex-1 w-full">
-          <div className="flex justify-between items-center mb-2">
-            <div className="flex items-center gap-2">
+        <div className="flex-1 w-full min-w-0">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2 gap-2 sm:gap-0">
+            <div className="flex items-center gap-2 truncate">
               <h4 className={cn(
-                "font-mono text-sm sm:text-base transition-all duration-300", 
+                "font-mono text-sm sm:text-base transition-all duration-300 truncate", 
                 quest.completed && "line-through text-[#A3A3A3]"
               )}>
                 {quest.title}
               </h4>
               {quest.isRecurring && (
-                <div className="flex items-center px-1 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20" title="Recurring Quest">
+                <div className="flex-shrink-0 flex items-center px-1 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20" title="Recurring Quest">
                   <Repeat className="w-3 h-3 text-indigo-400" />
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-[#A3A3A3] bg-[#0A0A0A] px-2 py-1 rounded border border-[#262626] flex items-center">
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <span className="text-xs font-mono text-[#A3A3A3] bg-[#0A0A0A] px-2 py-1 rounded border border-[#262626] flex items-center whitespace-nowrap">
                 <Trophy className="w-3 h-3 mr-1 text-yellow-500/50" />
                 {quest.baseReward} XP [{quest.attribute}]
               </span>
               {!quest.completed && quest.targetValue > 1 && (
                 <button 
                   onClick={onMax}
-                  className="text-[#A3A3A3] opacity-0 group-hover:opacity-100 transition-opacity p-1 flex items-center"
+                  className="text-[#A3A3A3] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity p-1 flex items-center"
                   style={{ color: themeColor }}
                   title="Complete All"
                 >
@@ -341,7 +311,7 @@ const QuestCard: React.FC<{ quest: any, themeColor: string, onProgress: () => vo
               {onDelete && (
                 <button 
                   onClick={onDelete}
-                  className="text-[#A3A3A3] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                  className="text-[#A3A3A3] hover:text-red-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity p-1"
                   title="Delete Quest"
                 >
                   <Trash2 className="w-4 h-4" />

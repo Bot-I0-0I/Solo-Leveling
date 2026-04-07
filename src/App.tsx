@@ -8,7 +8,7 @@ import { Layout } from './components/Layout';
 import { StatusView } from './views/StatusView';
 import { QuestView } from './views/QuestView';
 import { DungeonView } from './views/DungeonView';
-import { TacticalView } from './views/TacticalView';
+import { MissionAnalyticsView } from './views/MissionAnalyticsView';
 import { StoreView } from './views/StoreView';
 import { ReviewView } from './views/ReviewView';
 import { SchedulerView } from './views/SchedulerView';
@@ -50,7 +50,7 @@ export default function App() {
       {currentView === 'quests' && <QuestView />}
       {currentView === 'scheduler' && <SchedulerView />}
       {currentView === 'dungeons' && <DungeonView />}
-      {currentView === 'tactical' && <TacticalView />}
+      {currentView === 'tactical' && <MissionAnalyticsView />}
       {currentView === 'store' && <StoreView />}
       {currentView === 'ledger' && <LedgerView />}
       {currentView === 'reviews' && <ReviewView />}

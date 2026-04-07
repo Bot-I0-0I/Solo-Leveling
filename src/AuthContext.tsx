@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider, signOut, signInAnonymously } from 'firebase/auth';
 import { auth } from './firebase';
 import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isGuest: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -13,6 +14,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
+  isGuest: false,
   login: async () => {},
   logout: async () => {},
 });
@@ -22,13 +24,33 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState(false);
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        setIsGuest(currentUser.isAnonymous);
+        setLoading(false);
+      } else {
+        // Sign in anonymously for guests
+        try {
+          const result = await signInAnonymously(auth);
+          setUser(result.user);
+          setIsGuest(true);
+        } catch (error: any) {
+          console.error("Error signing in anonymously", error);
+          if (error.code === 'auth/admin-restricted-operation') {
+            toast.error("Guest login disabled. Please enable 'Anonymous' sign-in provider in Firebase Console > Authentication > Sign-in method.");
+          }
+          setUser(null);
+          setIsGuest(false);
+        } finally {
+          setLoading(false);
+        }
+      }
     });
 
     return () => unsubscribe();
@@ -47,6 +69,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Error signing in with Google", error);
       if (error.code === 'auth/popup-blocked') {
         toast.error("Popup blocked by browser. Please allow popups for this site to sign in.");
+      } else if (error.code === 'auth/unauthorized-domain') {
+        toast.error("Domain not authorized. Please add this app's URL to Firebase Console > Authentication > Settings > Authorized domains.");
+      } else if (error.code === 'auth/internal-error') {
+        toast.error("Internal authentication error. This can happen if the popup is closed too quickly or due to network issues.");
       } else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
         // User closed the popup, no need to show an error
       } else if (error.message?.includes('Pending promise was never set')) {
@@ -68,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, isGuest, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

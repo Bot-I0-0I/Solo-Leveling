@@ -5,7 +5,7 @@ import { db } from '../db/db';
 import { 
   Activity, Crosshair, Shield, ShoppingCart, Swords, 
   BookOpen, CalendarDays, Wallet, Settings, Flame, 
-  ChevronRight, LayoutGrid, Users, Zap, Terminal, Cpu
+  ChevronRight, LayoutGrid, Users, Zap, Terminal, Cpu, BrainCircuit
 } from 'lucide-react';
 import { cn, getRank } from '../lib/utils';
 import { motion } from 'framer-motion';
@@ -36,7 +36,7 @@ export function HubView() {
       title: "OPERATIONS",
       items: [
         { id: 'dungeons', icon: Swords, label: 'Instances', desc: 'Combat & Training' },
-        { id: 'tactical', icon: Crosshair, label: 'Tactical Readiness', desc: 'Skill Assessment' },
+        { id: 'tactical', icon: BrainCircuit, label: 'Mission Analytics', desc: 'Goal Tracking' },
         { id: 'reviews', icon: BookOpen, label: 'Weekly Review', desc: 'System Analysis' },
       ]
     },
@@ -150,6 +150,64 @@ export function HubView() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* System Logs */}
+        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 font-mono">
+          <h3 className="text-xs text-[#A3A3A3] tracking-widest uppercase mb-4 flex items-center">
+            <Terminal className="w-4 h-4 mr-2" />
+            SYSTEM LOGS
+          </h3>
+          <div className="space-y-2 text-[10px] text-[#525252]">
+            <div className="flex justify-between">
+              <span>[INFO] CORE_SYSTEM_INITIALIZED</span>
+              <span>{new Date().toISOString().split('T')[0]}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>[INFO] AUTH_PROTOCOL_ACTIVE</span>
+              <span>SECURE</span>
+            </div>
+            <div className="flex justify-between">
+              <span>[INFO] SYNC_ENGINE_READY</span>
+              <span>STABLE</span>
+            </div>
+            <div className="flex justify-between">
+              <span>[INFO] ALLY_NETWORK_SCANNING</span>
+              <span>ACTIVE</span>
+            </div>
+            <div className="flex justify-between text-green-500/50">
+              <span>[STATUS] SYSTEM_OPTIMIZED</span>
+              <span>100%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* World Status */}
+        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 font-mono">
+          <h3 className="text-xs text-[#A3A3A3] tracking-widest uppercase mb-4 flex items-center">
+            <Activity className="w-4 h-4 mr-2" />
+            WORLD STATUS
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between text-[10px] mb-1">
+                <span>GLOBAL THREAT LEVEL</span>
+                <span className="text-yellow-500">MODERATE</span>
+              </div>
+              <div className="h-1 bg-[#0A0A0A] rounded-full overflow-hidden">
+                <div className="h-full bg-yellow-500 w-1/3" />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-[10px] mb-1">
+                <span>ALLY DENSITY</span>
+                <span className="text-blue-400">HIGH</span>
+              </div>
+              <div className="h-1 bg-[#0A0A0A] rounded-full overflow-hidden">
+                <div className="h-full bg-blue-400 w-3/4" />
+              </div>
+            </div>
+          </div>
+        </div>
+
         {categories.map((cat, idx) => (
           <motion.div 
             key={cat.title}

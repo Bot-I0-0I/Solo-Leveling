@@ -2,7 +2,7 @@ import React from 'react';
 import { useStore } from '../store/useStore';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Activity, Crosshair, Shield, ShoppingCart, Swords, EyeOff, Eye, BookOpen, CalendarDays, Wallet, Settings, User, Flame, LogIn, LogOut, LayoutGrid, Menu, X } from 'lucide-react';
+import { Activity, Crosshair, Shield, ShoppingCart, Swords, EyeOff, Eye, BookOpen, CalendarDays, Wallet, Settings, User, Flame, LogIn, LogOut, LayoutGrid, Menu, X, BrainCircuit } from 'lucide-react';
 import { cn, getRank } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../AuthContext';
@@ -10,10 +10,10 @@ import { useAuth } from '../AuthContext';
 export function Layout({ children }: { children: React.ReactNode }) {
   const { isCloaked, currentView, toggleCloak, setView } = useStore();
   const userStats = useLiveQuery(() => db.userStats.get(1));
-  const { user, login, logout } = useAuth();
+  const { user, isGuest, login, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
-  const isPenalty = userStats?.penaltyActive;
+  const isPenalty = false; // Penalty system removed
 
   const navItems = [
     { id: 'status', icon: Activity, label: 'Status Window' },
@@ -21,7 +21,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { id: 'hub', icon: LayoutGrid, label: 'System Hub' },
     { id: 'scheduler', icon: CalendarDays, label: 'Directives' },
     { id: 'dungeons', icon: Swords, label: 'Instances' },
-    { id: 'tactical', icon: Crosshair, label: 'Tactical Readiness' },
+    { id: 'tactical', icon: BrainCircuit, label: 'Mission Analytics' },
     { id: 'nutrition', icon: Flame, label: 'Metabolism' },
     { id: 'store', icon: ShoppingCart, label: 'System Store' },
     { id: 'ledger', icon: Wallet, label: 'Treasury' },
@@ -129,7 +129,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         ))}
 
         <div className="flex flex-col mt-auto space-y-2">
-          {user ? (
+          {user && !isGuest ? (
             <button
               onClick={logout}
               className="flex items-center space-x-3 p-3 rounded-lg text-[#A3A3A3] hover:bg-[#1A1A1A] hover:text-white transition-all"

@@ -5,11 +5,40 @@ import { db as cloudDb } from './firebase';
 import { collection, doc, getDoc, getDocs, setDoc, writeBatch, query, where } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { getRank } from './lib/utils';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export function useCloudSync() {
   const { user } = useAuth();
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(null);
+
+  const localStats = useLiveQuery(() => localDb.userStats.get(1));
+
+  useEffect(() => {
+    if (!user || !localStats) return;
+
+    const syncProfile = async () => {
+      try {
+        const publicProfileRef = doc(cloudDb, 'publicProfiles', user.uid);
+        const level = Math.floor((localStats.xp || 0) / 1000) + 1;
+        const rank = getRank(level).rank;
+        await setDoc(publicProfileRef, cleanData({
+          uid: user.uid,
+          email: user.email || `guest_${user.uid.slice(0, 8)}@system.local`,
+          name: localStats.name || user.displayName || (user.isAnonymous ? `Guest_${user.uid.slice(0, 4)}` : 'Unknown'),
+          avatar: localStats.avatar || user.photoURL || '',
+          level,
+          rank,
+          isGuest: user.isAnonymous || false,
+          lastActive: new Date().toISOString()
+        }));
+      } catch (error) {
+        console.error("Profile sync error:", error);
+      }
+    };
+
+    syncProfile();
+  }, [user, localStats]);
 
   useEffect(() => {
     if (!user) return;
@@ -44,7 +73,7 @@ export function useCloudSync() {
     const newObj = { ...obj };
     delete newObj.id;
     Object.keys(newObj).forEach(key => {
-      if (newObj[key] === undefined) {
+      if (newObj[key] === undefined || Number.isNaN(newObj[key])) {
         delete newObj[key];
       }
     });
@@ -59,7 +88,9 @@ export function useCloudSync() {
       const localStats = await localDb.userStats.get(1);
       if (localStats) {
         const statsRef = doc(cloudDb, 'userStats', uid);
-        batch.set(statsRef, cleanData({ ...localStats, uid }));
+        const cleanedStats = cleanData({ ...localStats, uid });
+        delete cleanedStats.penaltyActive; // Remove deprecated field
+        batch.set(statsRef, cleanedStats);
 
         // Public Profile
         const publicProfileRef = doc(cloudDb, 'publicProfiles', uid);
@@ -67,11 +98,13 @@ export function useCloudSync() {
         const rank = getRank(level).rank;
         batch.set(publicProfileRef, cleanData({
           uid,
-          email: user?.email || '',
-          name: localStats.name || user?.email?.split('@')[0] || 'Unknown',
-          avatar: localStats.avatar || '',
+          email: user?.email || `guest_${uid.slice(0, 8)}@system.local`,
+          name: localStats.name || user?.displayName || (user?.isAnonymous ? `Guest_${uid.slice(0, 4)}` : 'Unknown'),
+          avatar: localStats.avatar || user?.photoURL || '',
           level,
-          rank
+          rank,
+          isGuest: user?.isAnonymous || false,
+          lastActive: new Date().toISOString()
         }));
       }
 
@@ -145,6 +178,13 @@ export function useCloudSync() {
         batch.set(ref, cleanData({ ...t, uid }));
       });
 
+      // Mission Logs
+      const missionLogs = await localDb.missionLogs.toArray();
+      missionLogs.forEach(m => {
+        const ref = doc(collection(cloudDb, 'missionLogs'));
+        batch.set(ref, cleanData({ ...m, uid }));
+      });
+
       await batch.commit();
       toast.success("Data pushed to cloud");
     } catch (error) {
@@ -159,7 +199,7 @@ export function useCloudSync() {
       const statsSnap = await getDoc(doc(cloudDb, 'userStats', uid));
       if (statsSnap.exists()) {
         const data = statsSnap.data();
-        const { uid: _, ...localData } = data;
+        const { uid: _, penaltyActive, ...localData } = data;
         await localDb.userStats.put({ ...localData, id: 1 } as any);
       }
 
@@ -192,6 +232,7 @@ export function useCloudSync() {
         syncCollection('ledger', localDb.ledger),
         syncCollection('nutritionLogs', localDb.nutritionLogs),
         syncCollection('tacticalLogs', localDb.tacticalLogs),
+        syncCollection('missionLogs', localDb.missionLogs),
       ]);
 
       toast.success("Data pulled from cloud");

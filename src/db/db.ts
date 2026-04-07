@@ -10,7 +10,6 @@ export interface UserStats {
   SEN: number;
   credits: number;
   xp: number;
-  penaltyActive: boolean;
   lastResetDate: string;
   name?: string;
   avatar?: string;
@@ -25,6 +24,8 @@ export interface UserStats {
   backgroundImage?: string;
   useRankTheme?: boolean;
   selectedColor?: string;
+  uid?: string;
+  friends?: string[];
 }
 
 export interface Quest {
@@ -33,7 +34,7 @@ export interface Quest {
   attribute: 'STR' | 'VIT' | 'AGI' | 'INT' | 'SEN';
   targetValue: number;
   currentValue: number;
-  type: 'daily' | 'penalty';
+  type: 'daily';
   completed: boolean;
   date: string; // YYYY-MM-DD
   baseReward: number;
@@ -148,6 +149,17 @@ export interface TacticalLog {
   notes?: string;
 }
 
+export interface MissionLog {
+  id?: number;
+  date: string;
+  title: string;
+  category: 'study' | 'work' | 'personal' | 'fitness';
+  result: 'success' | 'failure' | 'partial';
+  completionRate: number; // 0-100
+  noiseLevel: number; // 0-100, representing distractions/friction
+  notes?: string;
+}
+
 export class SystemDatabase extends Dexie {
   userStats!: Table<UserStats, number>;
   quests!: Table<Quest, number>;
@@ -162,6 +174,7 @@ export class SystemDatabase extends Dexie {
   tacticalLogs!: Table<TacticalLog, number>;
   foodTemplates!: Table<FoodTemplate, number>;
   questTemplates!: Table<QuestTemplate, number>;
+  missionLogs!: Table<MissionLog, number>;
 
   constructor() {
     super('SystemDB');
@@ -258,6 +271,22 @@ export class SystemDatabase extends Dexie {
       foodTemplates: '++id, name',
       questTemplates: '++id, title'
     });
+    this.version(9).stores({
+      userStats: 'id',
+      quests: '++id, date, type, completed',
+      dungeons: '++id, status',
+      inventory: '++id, type, equipped',
+      shopItems: '++id, purchased',
+      vesselLogs: '++id, date',
+      weeklyReviews: '++id, weekStartDate, status',
+      tasks: '++id, date, completed',
+      ledger: '++id, date, type',
+      nutritionLogs: '++id, date, type',
+      tacticalLogs: '++id, date, game',
+      foodTemplates: '++id, name',
+      questTemplates: '++id, title',
+      missionLogs: '++id, date, category'
+    });
   }
 }
 
@@ -274,8 +303,9 @@ db.on('populate', async () => {
     SEN: 10,
     credits: 0,
     xp: 0,
-    penaltyActive: false,
     lastResetDate: new Date().toISOString().split('T')[0],
+    uid: crypto.randomUUID(),
+    friends: []
   });
 
   await db.shopItems.bulkAdd([

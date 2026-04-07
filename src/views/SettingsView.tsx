@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 export function SettingsView() {
   const userStats = useLiveQuery(() => db.userStats.get(1));
   const { theme, toggleTheme } = useStore();
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const { isSyncing, lastSync, forceSync } = useCloudSync();
   
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
@@ -410,7 +410,7 @@ export function SettingsView() {
             </div>
           </div>
           
-          {user && (
+          {user && !isGuest && (
             <div className="pt-4 border-t border-[#262626]">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center text-white font-mono">

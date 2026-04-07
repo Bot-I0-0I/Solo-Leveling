@@ -19,45 +19,22 @@ export function useSystemEngine() {
           .and(q => q.type === 'daily')
           .toArray();
 
-        const allCompleted = yesterdayQuests.every(q => q.completed);
-
-        if (!allCompleted && yesterdayQuests.length > 0) {
-          // Penalty Protocol Triggered
-          await db.userStats.update(1, { 
-            penaltyActive: true,
-            lastResetDate: today
-          });
-
-          // Generate Penalty Quest
-          await db.quests.add({
-            title: 'Penalty: 200 Burpees',
-            attribute: 'VIT',
-            targetValue: 200,
-            currentValue: 0,
-            type: 'penalty',
-            completed: false,
-            date: today,
-            baseReward: 0
-          });
-        } else {
-          // Reset successful, generate new daily quests if needed
-          await db.userStats.update(1, { 
-            penaltyActive: false,
-            lastResetDate: today
-          });
-          
-          // Duplicate yesterday's recurring quests for today
-          const recurringQuests = yesterdayQuests.filter(q => q.isRecurring);
-          const newQuests = recurringQuests.map(q => ({
-            ...q,
-            id: undefined,
-            currentValue: 0,
-            completed: false,
-            date: today
-          }));
-          if (newQuests.length > 0) {
-             await db.quests.bulkAdd(newQuests as any);
-          }
+        // Reset successful, generate new daily quests if needed
+        await db.userStats.update(1, { 
+          lastResetDate: today
+        });
+        
+        // Duplicate yesterday's recurring quests for today
+        const recurringQuests = yesterdayQuests.filter(q => q.isRecurring);
+        const newQuests = recurringQuests.map(q => ({
+          ...q,
+          id: undefined,
+          currentValue: 0,
+          completed: false,
+          date: today
+        }));
+        if (newQuests.length > 0) {
+           await db.quests.bulkAdd(newQuests as any);
         }
       }
 

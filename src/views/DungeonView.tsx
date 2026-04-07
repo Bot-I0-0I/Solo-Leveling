@@ -180,16 +180,16 @@ export function DungeonView() {
           <div className="grid gap-4">
             {activeDungeons.map(dungeon => (
               <div key={dungeon.id} className="bg-[#141414] border border-[#262626] rounded-xl p-6">
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <h4 className="text-xl font-mono font-bold text-white uppercase">{dungeon.title}</h4>
-                    <div className="flex gap-3 mt-1">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-6 gap-4">
+                  <div className="w-full sm:w-auto">
+                    <h4 className="text-xl font-mono font-bold text-white uppercase truncate">{dungeon.title}</h4>
+                    <div className="flex flex-wrap gap-3 mt-1">
                       <span className="text-xs text-red-400 font-mono">BOSS ENTITY</span>
-                      <span className="text-xs text-[#00F0FF] font-mono">+{dungeon.rewardXp ?? 500} XP</span>
-                      <span className="text-xs text-[#FFD700] font-mono">+{dungeon.rewardCredits ?? 500} CR</span>
+                      <span className="text-xs text-[#00F0FF] font-mono whitespace-nowrap">+{dungeon.rewardXp ?? 500} XP</span>
+                      <span className="text-xs text-[#FFD700] font-mono whitespace-nowrap">+{dungeon.rewardCredits ?? 500} CR</span>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 self-end sm:self-auto">
                     <button 
                       onClick={() => setActiveDungeonId(dungeon.id!)}
                       className="bg-red-950/30 text-red-500 hover:bg-red-900/50 px-4 py-2 rounded-md font-mono text-sm flex items-center transition-colors border border-red-900/50"
@@ -231,15 +231,15 @@ export function DungeonView() {
           <h3 className="text-xl font-mono text-white pt-8">CLEARED DUNGEONS</h3>
           <div className="grid gap-4 opacity-70">
             {clearedDungeons.map(dungeon => (
-              <div key={dungeon.id} className="bg-[#0A0A0A] border border-[#262626] rounded-xl p-4 flex justify-between items-center group">
-                <div className="flex flex-col">
-                  <span className="font-mono text-sm text-[#A3A3A3] line-through">{dungeon.title}</span>
-                  <div className="flex gap-2 mt-1">
-                    <span className="text-xs text-[#00F0FF]/50 font-mono">+{dungeon.rewardXp ?? 500} XP</span>
-                    <span className="text-xs text-[#FFD700]/50 font-mono">+{dungeon.rewardCredits ?? 500} CR</span>
+              <div key={dungeon.id} className="bg-[#0A0A0A] border border-[#262626] rounded-xl p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 group">
+                <div className="flex flex-col w-full sm:w-auto">
+                  <span className="font-mono text-sm text-[#A3A3A3] line-through truncate">{dungeon.title}</span>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    <span className="text-xs text-[#00F0FF]/50 font-mono whitespace-nowrap">+{dungeon.rewardXp ?? 500} XP</span>
+                    <span className="text-xs text-[#FFD700]/50 font-mono whitespace-nowrap">+{dungeon.rewardCredits ?? 500} CR</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 self-end sm:self-auto">
                   {!dungeon.shadowExtracted ? (
                     <button 
                       onClick={async () => {
@@ -260,7 +260,7 @@ export function DungeonView() {
                   )}
                   <button 
                     onClick={() => handleDeleteDungeon(dungeon.id!)}
-                    className="text-[#A3A3A3] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="text-[#A3A3A3] hover:text-red-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                     title="Delete Record"
                   >
                     <Trash2 className="w-4 h-4" />

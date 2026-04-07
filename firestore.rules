@@ -202,7 +202,7 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidUserStats(data) {
-      let requiredFields = ['STR', 'VIT', 'AGI', 'INT', 'SEN', 'credits', 'xp', 'penaltyActive', 'lastResetDate', 'uid'];
+      let requiredFields = ['STR', 'VIT', 'AGI', 'INT', 'SEN', 'credits', 'xp', 'lastResetDate', 'uid'];
       let optionalFields = ['name', 'avatar', 'height', 'age', 'gender', 'notes', 'fitnessGoal', 'activityLevel', 'friends', 'role', 'uiTheme', 'backgroundImage', 'useRankTheme', 'selectedColor'];
       let allFields = requiredFields.concat(optionalFields);
 
@@ -215,7 +215,6 @@ service cloud.firestore {
              data.SEN is number && data.SEN >= 0 &&
              data.credits is number && data.credits >= 0 &&
              data.xp is number && data.xp >= 0 &&
-             data.penaltyActive is bool &&
              validStringLength('lastResetDate', 10, 10) &&
              data.uid == request.auth.uid &&
              isValidOptionalString('name', 0, 100) &&
@@ -236,7 +235,7 @@ service cloud.firestore {
 
     function isValidPublicProfile(data) {
       let requiredFields = ['uid', 'email', 'name', 'level', 'rank'];
-      let optionalFields = ['avatar'];
+      let optionalFields = ['avatar', 'isGuest', 'lastActive'];
       let allFields = requiredFields.concat(optionalFields);
 
       return hasRequiredFields(requiredFields) &&
@@ -246,12 +245,15 @@ service cloud.firestore {
              validStringLength('name', 1, 100) &&
              data.level is number && data.level >= 1 &&
              validStringLength('rank', 1, 50) &&
-             isValidOptionalString('avatar', 0, 500);
+             isValidOptionalString('avatar', 0, 500) &&
+             (!( 'isGuest' in data ) || data.isGuest is bool) &&
+             isValidOptionalString('lastActive', 10, 30);
     }
 
     function isValidFriendRequest(data) {
       let requiredFields = ['fromUid', 'toUid', 'fromEmail', 'toEmail', 'fromName', 'status', 'createdAt'];
-      let allFields = requiredFields;
+      let optionalFields = ['toName'];
+      let allFields = requiredFields.concat(optionalFields);
 
       return hasRequiredFields(requiredFields) &&
              hasOnlyAllowedFields(allFields) &&
@@ -260,6 +262,7 @@ service cloud.firestore {
              validStringLength('fromEmail', 3, 100) &&
              validStringLength('toEmail', 3, 100) &&
              validStringLength('fromName', 1, 100) &&
+             (!('toName' in data) || validStringLength('toName', 1, 100)) &&
              data.status in ['pending', 'accepted', 'rejected'] &&
              validStringLength('createdAt', 10, 30);
     }
@@ -275,7 +278,7 @@ service cloud.firestore {
              data.attribute in ['STR', 'VIT', 'AGI', 'INT', 'SEN'] &&
              data.targetValue is number && data.targetValue >= 0 &&
              data.currentValue is number && data.currentValue >= 0 &&
-             data.type in ['daily', 'penalty'] &&
+             data.type == 'daily' &&
              data.completed is bool &&
              validStringLength('date', 10, 10) &&
              data.baseReward is number && data.baseReward >= 0 &&
@@ -424,12 +427,29 @@ service cloud.firestore {
              data.uid == request.auth.uid;
     }
 
+    function isValidMissionLog(data) {
+      let requiredFields = ['date', 'title', 'category', 'result', 'completionRate', 'noiseLevel', 'uid'];
+      let optionalFields = ['notes'];
+      let allFields = requiredFields.concat(optionalFields);
+
+      return hasRequiredFields(requiredFields) &&
+             hasOnlyAllowedFields(allFields) &&
+             validStringLength('date', 10, 30) &&
+             validStringLength('title', 1, 200) &&
+             data.category in ['study', 'work', 'personal', 'fitness'] &&
+             data.result in ['success', 'failure', 'partial'] &&
+             data.completionRate is number && data.completionRate >= 0 && data.completionRate <= 100 &&
+             data.noiseLevel is number && data.noiseLevel >= 0 && data.noiseLevel <= 100 &&
+             isValidOptionalString('notes', 0, 5000) &&
+             data.uid == request.auth.uid;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
 
     match /userStats/{uid} {
-      allow read: if isOwner(uid) || (isAuthenticated() && request.auth.uid in resource.data.friends);
+      allow read: if isOwner(uid) || (isAuthenticated() && request.auth.uid in resource.data.get('friends', []));
       allow create: if isOwner(uid) && isValidUserStats(request.resource.data) && uidUnchanged();
       allow update: if (isOwner(uid) && isValidUserStats(request.resource.data) && uidNotModified()) ||
                     (isAuthenticated() && 
@@ -450,11 +470,11 @@ service cloud.firestore {
     }
 
     match /friendRequests/{requestId} {
-      allow read: if isAuthenticated() && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+      allow read: if isAuthenticated() && (resource == null || resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
       allow create: if isAuthenticated() && request.resource.data.fromUid == request.auth.uid && isValidFriendRequest(request.resource.data);
       allow update: if isAuthenticated() && (
         (resource.data.toUid == request.auth.uid && request.resource.data.status in ['accepted', 'rejected'] && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])) ||
-        (resource.data.fromUid == request.auth.uid && request.resource.data.status == 'pending')
+        (resource.data.fromUid == request.auth.uid && request.resource.data.status == 'rejected' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
       ) && isValidFriendRequest(request.resource.data);
       allow delete: if isAuthenticated() && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
     }
@@ -526,6 +546,13 @@ service cloud.firestore {
       allow read: if isDocOwner();
       allow create: if isAuthenticated() && isValidTacticalLog(request.resource.data) && uidUnchanged();
       allow update: if isDocOwner() && isValidTacticalLog(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+
+    match /missionLogs/{logId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidMissionLog(request.resource.data) && uidUnchanged();
+      allow update: if isDocOwner() && isValidMissionLog(request.resource.data) && uidNotModified();
       allow delete: if isDocOwner();
     }
   }
