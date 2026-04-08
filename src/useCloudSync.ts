@@ -82,7 +82,19 @@ export function useCloudSync() {
 
   const pushToCloud = async (uid: string) => {
     try {
-      const batch = writeBatch(cloudDb);
+      const chunks: Promise<void>[] = [];
+      let currentBatch = writeBatch(cloudDb);
+      let opCount = 0;
+
+      const addToBatch = (ref: any, data: any) => {
+        currentBatch.set(ref, data);
+        opCount++;
+        if (opCount >= 400) {
+          chunks.push(currentBatch.commit());
+          currentBatch = writeBatch(cloudDb);
+          opCount = 0;
+        }
+      };
 
       // User Stats
       const localStats = await localDb.userStats.get(1);
@@ -90,13 +102,13 @@ export function useCloudSync() {
         const statsRef = doc(cloudDb, 'userStats', uid);
         const cleanedStats = cleanData({ ...localStats, uid });
         delete cleanedStats.penaltyActive; // Remove deprecated field
-        batch.set(statsRef, cleanedStats);
+        addToBatch(statsRef, cleanedStats);
 
         // Public Profile
         const publicProfileRef = doc(cloudDb, 'publicProfiles', uid);
         const level = Math.floor((localStats.xp || 0) / 1000) + 1;
         const rank = getRank(level).rank;
-        batch.set(publicProfileRef, cleanData({
+        addToBatch(publicProfileRef, cleanData({
           uid,
           email: user?.email || `guest_${uid.slice(0, 8)}@system.local`,
           name: localStats.name || user?.displayName || (user?.isAnonymous ? `Guest_${uid.slice(0, 4)}` : 'Unknown'),
@@ -111,81 +123,85 @@ export function useCloudSync() {
       // Quests
       const quests = await localDb.quests.toArray();
       quests.forEach(q => {
-        const ref = doc(collection(cloudDb, 'quests'));
-        batch.set(ref, cleanData({ ...q, uid }));
+        const ref = doc(cloudDb, 'quests', `${uid}_${q.id}`);
+        addToBatch(ref, cleanData({ ...q, uid }));
       });
 
       // Dungeons
       const dungeons = await localDb.dungeons.toArray();
       dungeons.forEach(d => {
-        const ref = doc(collection(cloudDb, 'dungeons'));
-        batch.set(ref, cleanData({ ...d, uid }));
+        const ref = doc(cloudDb, 'dungeons', `${uid}_${d.id}`);
+        addToBatch(ref, cleanData({ ...d, uid }));
       });
 
       // Inventory
       const inventory = await localDb.inventory.toArray();
       inventory.forEach(i => {
-        const ref = doc(collection(cloudDb, 'inventory'));
-        batch.set(ref, cleanData({ ...i, uid }));
+        const ref = doc(cloudDb, 'inventory', `${uid}_${i.id}`);
+        addToBatch(ref, cleanData({ ...i, uid }));
       });
 
       // Shop Items
       const shopItems = await localDb.shopItems.toArray();
       shopItems.forEach(s => {
-        const ref = doc(collection(cloudDb, 'shopItems'));
-        batch.set(ref, cleanData({ ...s, uid }));
+        const ref = doc(cloudDb, 'shopItems', `${uid}_${s.id}`);
+        addToBatch(ref, cleanData({ ...s, uid }));
       });
 
       // Vessel Logs
       const vesselLogs = await localDb.vesselLogs.toArray();
       vesselLogs.forEach(v => {
-        const ref = doc(collection(cloudDb, 'vesselLogs'));
-        batch.set(ref, cleanData({ ...v, uid }));
+        const ref = doc(cloudDb, 'vesselLogs', `${uid}_${v.id}`);
+        addToBatch(ref, cleanData({ ...v, uid }));
       });
 
       // Weekly Reviews
       const weeklyReviews = await localDb.weeklyReviews.toArray();
       weeklyReviews.forEach(w => {
-        const ref = doc(collection(cloudDb, 'weeklyReviews'));
-        batch.set(ref, cleanData({ ...w, uid }));
+        const ref = doc(cloudDb, 'weeklyReviews', `${uid}_${w.id}`);
+        addToBatch(ref, cleanData({ ...w, uid }));
       });
 
       // Tasks
       const tasks = await localDb.tasks.toArray();
       tasks.forEach(t => {
-        const ref = doc(collection(cloudDb, 'tasks'));
-        batch.set(ref, cleanData({ ...t, uid }));
+        const ref = doc(cloudDb, 'tasks', `${uid}_${t.id}`);
+        addToBatch(ref, cleanData({ ...t, uid }));
       });
 
       // Ledger
       const ledger = await localDb.ledger.toArray();
       ledger.forEach(l => {
-        const ref = doc(collection(cloudDb, 'ledger'));
-        batch.set(ref, cleanData({ ...l, uid }));
+        const ref = doc(cloudDb, 'ledger', `${uid}_${l.id}`);
+        addToBatch(ref, cleanData({ ...l, uid }));
       });
 
       // Nutrition Logs
       const nutritionLogs = await localDb.nutritionLogs.toArray();
       nutritionLogs.forEach(n => {
-        const ref = doc(collection(cloudDb, 'nutritionLogs'));
-        batch.set(ref, cleanData({ ...n, uid }));
+        const ref = doc(cloudDb, 'nutritionLogs', `${uid}_${n.id}`);
+        addToBatch(ref, cleanData({ ...n, uid }));
       });
 
       // Tactical Logs
       const tacticalLogs = await localDb.tacticalLogs.toArray();
       tacticalLogs.forEach(t => {
-        const ref = doc(collection(cloudDb, 'tacticalLogs'));
-        batch.set(ref, cleanData({ ...t, uid }));
+        const ref = doc(cloudDb, 'tacticalLogs', `${uid}_${t.id}`);
+        addToBatch(ref, cleanData({ ...t, uid }));
       });
 
       // Mission Logs
       const missionLogs = await localDb.missionLogs.toArray();
       missionLogs.forEach(m => {
-        const ref = doc(collection(cloudDb, 'missionLogs'));
-        batch.set(ref, cleanData({ ...m, uid }));
+        const ref = doc(cloudDb, 'missionLogs', `${uid}_${m.id}`);
+        addToBatch(ref, cleanData({ ...m, uid }));
       });
 
-      await batch.commit();
+      if (opCount > 0) {
+        chunks.push(currentBatch.commit());
+      }
+
+      await Promise.all(chunks);
       toast.success("Data pushed to cloud");
     } catch (error) {
       console.error("Push error:", error);
@@ -210,6 +226,10 @@ export function useCloudSync() {
         const items = snap.docs.map(doc => {
           const data = doc.data();
           const { uid: _, ...localData } = data;
+          const idStr = doc.id.split('_')[1];
+          if (idStr) {
+            localData.id = parseInt(idStr, 10);
+          }
           return localData;
         });
         
