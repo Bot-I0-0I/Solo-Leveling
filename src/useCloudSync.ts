@@ -15,32 +15,6 @@ export function useCloudSync() {
   const localStats = useLiveQuery(() => localDb.userStats.get(1));
 
   useEffect(() => {
-    if (!user || !localStats) return;
-
-    const syncProfile = async () => {
-      try {
-        const publicProfileRef = doc(cloudDb, 'publicProfiles', user.uid);
-        const level = Math.floor((localStats.xp || 0) / 1000) + 1;
-        const rank = getRank(level).rank;
-        await setDoc(publicProfileRef, cleanData({
-          uid: user.uid,
-          email: user.email || `guest_${user.uid.slice(0, 8)}@system.local`,
-          name: localStats.name || user.displayName || (user.isAnonymous ? `Guest_${user.uid.slice(0, 4)}` : 'Unknown'),
-          avatar: localStats.avatar || user.photoURL || '',
-          level,
-          rank,
-          isGuest: user.isAnonymous || false,
-          lastActive: new Date().toISOString()
-        }));
-      } catch (error) {
-        console.error("Profile sync error:", error);
-      }
-    };
-
-    syncProfile();
-  }, [user, localStats]);
-
-  useEffect(() => {
     if (!user) return;
 
     const syncData = async () => {
@@ -103,21 +77,6 @@ export function useCloudSync() {
         const cleanedStats = cleanData({ ...localStats, uid });
         delete cleanedStats.penaltyActive; // Remove deprecated field
         addToBatch(statsRef, cleanedStats);
-
-        // Public Profile
-        const publicProfileRef = doc(cloudDb, 'publicProfiles', uid);
-        const level = Math.floor((localStats.xp || 0) / 1000) + 1;
-        const rank = getRank(level).rank;
-        addToBatch(publicProfileRef, cleanData({
-          uid,
-          email: user?.email || `guest_${uid.slice(0, 8)}@system.local`,
-          name: localStats.name || user?.displayName || (user?.isAnonymous ? `Guest_${uid.slice(0, 4)}` : 'Unknown'),
-          avatar: localStats.avatar || user?.photoURL || '',
-          level,
-          rank,
-          isGuest: user?.isAnonymous || false,
-          lastActive: new Date().toISOString()
-        }));
       }
 
       // Quests

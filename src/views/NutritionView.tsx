@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp, FoodTemplate } from '../db/db';
-import { analyzeNutrition } from '../services/aiService';
-import { Flame, Utensils, Activity, Plus, Trash2, Target, Dumbbell, Droplets, Beef, Wheat, Moon, Save, Download, BarChart3, Sparkles } from 'lucide-react';
+import { Flame, Utensils, Activity, Plus, Trash2, Target, Dumbbell, Droplets, Beef, Wheat, Moon, Save, Download, BarChart3 } from 'lucide-react';
 import { cn, getRank } from '../lib/utils';
 import { format, subDays, startOfDay, parseISO } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
@@ -47,34 +46,6 @@ export function NutritionView() {
   const [weight, setWeight] = useState('');
   const [bodyFat, setBodyFat] = useState('');
   const [stressLevel, setStressLevel] = useState('');
-  const [aiQuery, setAiQuery] = useState('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-
-  const handleAiAnalysis = async () => {
-    if (!aiQuery) return;
-    setIsAnalyzing(true);
-    try {
-      const data = await analyzeNutrition(aiQuery, activeTab as 'food' | 'exercise');
-      
-      setName(data.name || '');
-      setCalories(data.calories?.toString() || '');
-      
-      if (activeTab === 'food') {
-        setProtein(data.protein?.toString() || '');
-        setCarbs(data.carbs?.toString() || '');
-        setFat(data.fat?.toString() || '');
-      } else if (activeTab === 'exercise') {
-        setDuration(data.duration?.toString() || '');
-        setMuscleGroup(data.muscleGroup || '');
-      }
-      setAiQuery('');
-    } catch (error) {
-      console.error(error);
-      alert("Failed to analyze with AI. Please enter manually.");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
 
   if (!userStats || !nutritionLogs) return <div className="opacity-80 p-4">Loading Metabolism...</div>;
 
@@ -681,36 +652,6 @@ export function NutritionView() {
               )}
             </button>
           </div>
-
-          {activeTab !== 'water' && (
-            <div className="mb-6 p-4 bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-xl">
-              <label className="block text-xs font-mono text-blue-400 mb-2 flex items-center">
-                <Sparkles className="w-3 h-3 mr-1" /> AI AUTO-FILL
-              </label>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  value={aiQuery}
-                  onChange={(e) => setAiQuery(e.target.value)}
-                  className="flex-1 bg-[#0A0A0A] border border-blue-500/30 rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-blue-500"
-                  placeholder={activeTab === 'food' ? "e.g., I ate a large pepperoni pizza slice" : "e.g., I ran 5km in 25 minutes"}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAiAnalysis();
-                    }
-                  }}
-                />
-                <button 
-                  onClick={handleAiAnalysis}
-                  disabled={isAnalyzing || !aiQuery}
-                  className="bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 border border-blue-500/50 px-4 py-2 rounded-md font-mono text-sm transition-colors disabled:opacity-50"
-                >
-                  {isAnalyzing ? 'ANALYZING...' : 'ANALYZE'}
-                </button>
-              </div>
-            </div>
-          )}
 
           <form onSubmit={handleAddLog} className="space-y-4">
             {activeTab === 'water' ? (

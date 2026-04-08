@@ -68,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       console.error("Error signing in with Google", error);
       if (error.code === 'auth/popup-blocked') {
-        toast.error("Popup blocked by browser. Please allow popups for this site to sign in.");
+        toast.error("Popup blocked! Please allow popups for this site in your browser settings to sign in.", { duration: 10000 });
       } else if (error.code === 'auth/unauthorized-domain') {
         toast.error("Domain not authorized. Please add this app's URL to Firebase Console > Authentication > Settings > Authorized domains.");
       } else if (error.code === 'auth/internal-error') {

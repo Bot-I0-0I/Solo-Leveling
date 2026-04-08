@@ -91,10 +91,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
              'LIFE CONTROL SYSTEM'}
           </h1>
           
-          {userStats?.name && (
+          {(user && !isGuest) ? (
+            <div className="flex items-center mt-4 space-x-3 bg-[#141414] p-2 rounded-lg border border-[#262626]">
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="Avatar" className="w-8 h-8 rounded-full object-cover border border-[#262626]" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-[#262626] flex items-center justify-center">
+                  <User className="w-4 h-4 text-[#A3A3A3]" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-mono text-white truncate">{user.displayName || user.email || 'User'}</p>
+                <p className="text-[10px] font-mono text-[#A3A3A3] truncate">{user.email}</p>
+              </div>
+            </div>
+          ) : userStats?.name ? (
             <div className="flex items-center mt-4 space-x-3 bg-[#141414] p-2 rounded-lg border border-[#262626]">
               {userStats.avatar ? (
-                <img src={userStats.avatar} alt="Avatar" className="w-8 h-8 rounded-full object-cover border border-[#262626]" />
+                <img src={userStats.avatar} alt="Avatar" className="w-8 h-8 rounded-full object-cover border border-[#262626]" referrerPolicy="no-referrer" />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-[#262626] flex items-center justify-center">
                   <User className="w-4 h-4 text-[#A3A3A3]" />
@@ -105,7 +119,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <p className="text-[10px] font-mono text-[#A3A3A3]">Lvl {Math.floor((userStats.xp || 0) / 1000) + 1} • {userStats.role || 'Player'}</p>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
 
         {navItems.map((item) => (
@@ -193,25 +207,47 @@ export function Layout({ children }: { children: React.ReactNode }) {
         isCloaked && "blur-sm transition-all duration-300 hover:blur-none"
       )}>
         {/* Mobile Header */}
-        <div className="md:hidden flex justify-between items-center mb-6">
-          <h1 className={cn(
-            "text-xl font-bold tracking-tighter uppercase font-mono transition-all duration-500",
-            isPenalty ? "text-red-500" : ""
-          )} style={!isPenalty ? { color: themeColor, textShadow: `0 0 10px ${themeColor}80` } : {}}>
-            {isPenalty ? 'PENALTY ZONE' : 'LIFE CONTROL'}
-          </h1>
-          <div className="flex space-x-2">
-            {user ? (
-              <button onClick={logout} className="p-2 bg-[#262626] rounded-md">
-                <LogOut className="w-4 h-4" />
+        <div className="md:hidden flex justify-between items-center mb-6 bg-[#141414] p-3 rounded-xl border border-[#262626]">
+          <div className="flex items-center space-x-3">
+            {user && !isGuest ? (
+              <div className="w-10 h-10 rounded-full overflow-hidden border border-[#262626]">
+                {user.photoURL ? (
+                   <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                   <div className="w-full h-full bg-[#262626] flex items-center justify-center"><User className="w-5 h-5 text-[#A3A3A3]" /></div>
+                )}
+              </div>
+            ) : userStats?.avatar ? (
+              <div className="w-10 h-10 rounded-full overflow-hidden border border-[#262626]">
+                <img src={userStats.avatar} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center border border-[#262626]">
+                <User className="w-5 h-5 text-[#A3A3A3]" />
+              </div>
+            )}
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-white font-mono truncate max-w-[120px]">
+                {user && !isGuest ? (user.displayName || 'User') : (userStats?.name || 'Guest')}
+              </span>
+              <span className="text-[10px] text-[#A3A3A3] font-mono">
+                {user && !isGuest ? 'Cloud Synced' : `Lvl ${level}`}
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex space-x-2 items-center">
+            {user && !isGuest ? (
+              <button onClick={logout} className="p-2 bg-[#262626] hover:bg-[#333] rounded-md flex items-center justify-center transition-colors">
+                <LogOut className="w-4 h-4 text-[#A3A3A3]" />
               </button>
             ) : (
-              <button onClick={login} className="p-2 bg-[#262626] rounded-md">
-                <LogIn className="w-4 h-4" />
+              <button onClick={login} className="p-2 bg-[#262626] hover:bg-[#333] rounded-md flex items-center justify-center transition-colors">
+                <LogIn className="w-4 h-4 text-[#A3A3A3]" />
               </button>
             )}
-            <button onClick={toggleCloak} className="p-2 bg-[#262626] rounded-md">
-              {isCloaked ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            <button onClick={toggleCloak} className="p-2 bg-[#262626] hover:bg-[#333] rounded-md flex items-center justify-center transition-colors">
+              {isCloaked ? <EyeOff className="w-4 h-4 text-[#A3A3A3]" /> : <Eye className="w-4 h-4 text-[#A3A3A3]" />}
             </button>
           </div>
         </div>

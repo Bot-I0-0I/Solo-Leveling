@@ -327,7 +327,7 @@ export function MissionAnalyticsView() {
               <h3 className="text-sm font-mono text-white mb-4">CATEGORY DISTRIBUTION</h3>
               <div className="h-[200px] w-full">
                 {categoryData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <PieChart>
                       <Pie
                         data={categoryData}
@@ -366,7 +366,7 @@ export function MissionAnalyticsView() {
               <h3 className="text-sm font-mono text-white mb-4">RESULT DISTRIBUTION</h3>
               <div className="h-[200px] w-full">
                 {resultData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <PieChart>
                       <Pie
                         data={resultData}

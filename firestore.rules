@@ -156,7 +156,10 @@ service cloud.firestore {
     }
 
     function isDocOwner() {
-      return isAuthenticated() && request.auth.uid == resource.data.uid;
+      return isAuthenticated() && (
+        ('uid' in resource.data && request.auth.uid == resource.data.uid) ||
+        (!('uid' in resource.data) && request.resource != null && 'uid' in request.resource.data && request.auth.uid == request.resource.data.uid)
+      );
     }
 
     function uidUnchanged() {
@@ -164,7 +167,7 @@ service cloud.firestore {
     }
 
     function uidNotModified() {
-      return !('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid;
+      return !('uid' in request.resource.data) || !('uid' in resource.data) || request.resource.data.uid == resource.data.uid;
     }
 
     function hasRequiredFields(fields) {
@@ -192,18 +195,13 @@ service cloud.firestore {
       return !(field in request.resource.data) || request.resource.data[field] is number;
     }
 
-    function isFriendRequestAccepted(uid1, uid2) {
-      return (existsAfter(/databases/$(database)/documents/friendRequests/$(uid1 + '_' + uid2)) && getAfter(/databases/$(database)/documents/friendRequests/$(uid1 + '_' + uid2)).data.status == 'accepted') ||
-             (existsAfter(/databases/$(database)/documents/friendRequests/$(uid2 + '_' + uid1)) && getAfter(/databases/$(database)/documents/friendRequests/$(uid2 + '_' + uid1)).data.status == 'accepted');
-    }
-
     // ===============================================================
     // Domain Validators
     // ===============================================================
 
     function isValidUserStats(data) {
       let requiredFields = ['STR', 'VIT', 'AGI', 'INT', 'SEN', 'credits', 'xp', 'lastResetDate', 'uid'];
-      let optionalFields = ['name', 'avatar', 'height', 'age', 'gender', 'notes', 'fitnessGoal', 'activityLevel', 'friends', 'role', 'uiTheme', 'backgroundImage', 'useRankTheme', 'selectedColor'];
+      let optionalFields = ['name', 'avatar', 'height', 'age', 'gender', 'notes', 'fitnessGoal', 'activityLevel', 'role', 'uiTheme', 'backgroundImage', 'useRankTheme', 'selectedColor'];
       let allFields = requiredFields.concat(optionalFields);
 
       return hasRequiredFields(requiredFields) &&
@@ -221,50 +219,15 @@ service cloud.firestore {
              isValidOptionalString('avatar', 0, 1048576) &&
              isValidOptionalNumber('height') &&
              isValidOptionalNumber('age') &&
-             (!( 'gender' in data ) || data.gender in ['male', 'female', 'other']) &&
+             (!( 'gender' in data ) || data.gender == '' || data.gender in ['male', 'female', 'other']) &&
              isValidOptionalString('notes', 0, 5000) &&
-             (!( 'fitnessGoal' in data ) || data.fitnessGoal in ['lose', 'maintain', 'build']) &&
-             (!( 'activityLevel' in data ) || data.activityLevel in ['sedentary', 'light', 'moderate', 'active', 'very_active']) &&
-             (!( 'friends' in data ) || data.friends is list) &&
+             (!( 'fitnessGoal' in data ) || data.fitnessGoal == '' || data.fitnessGoal in ['lose', 'maintain', 'build']) &&
+             (!( 'activityLevel' in data ) || data.activityLevel == '' || data.activityLevel in ['sedentary', 'light', 'moderate', 'active', 'very_active']) &&
              isValidOptionalString('role', 0, 100) &&
              isValidOptionalString('uiTheme', 0, 100) &&
              isValidOptionalString('backgroundImage', 0, 1048576) &&
              (!( 'useRankTheme' in data ) || data.useRankTheme is bool) &&
              isValidOptionalString('selectedColor', 0, 50);
-    }
-
-    function isValidPublicProfile(data) {
-      let requiredFields = ['uid', 'email', 'name', 'level', 'rank'];
-      let optionalFields = ['avatar', 'isGuest', 'lastActive'];
-      let allFields = requiredFields.concat(optionalFields);
-
-      return hasRequiredFields(requiredFields) &&
-             hasOnlyAllowedFields(allFields) &&
-             data.uid == request.auth.uid &&
-             validStringLength('email', 3, 100) &&
-             validStringLength('name', 1, 100) &&
-             data.level is number && data.level >= 1 &&
-             validStringLength('rank', 1, 50) &&
-             isValidOptionalString('avatar', 0, 1048576) &&
-             (!( 'isGuest' in data ) || data.isGuest is bool) &&
-             isValidOptionalString('lastActive', 10, 30);
-    }
-
-    function isValidFriendRequest(data) {
-      let requiredFields = ['fromUid', 'toUid', 'fromEmail', 'toEmail', 'fromName', 'status', 'createdAt'];
-      let optionalFields = ['toName'];
-      let allFields = requiredFields.concat(optionalFields);
-
-      return hasRequiredFields(requiredFields) &&
-             hasOnlyAllowedFields(allFields) &&
-             validStringLength('fromUid', 1, 100) &&
-             validStringLength('toUid', 1, 100) &&
-             validStringLength('fromEmail', 3, 100) &&
-             validStringLength('toEmail', 3, 100) &&
-             validStringLength('fromName', 1, 100) &&
-             (!('toName' in data) || validStringLength('toName', 1, 100)) &&
-             data.status in ['pending', 'accepted', 'rejected'] &&
-             validStringLength('createdAt', 10, 30);
     }
 
     function isValidQuest(data) {
@@ -449,34 +412,10 @@ service cloud.firestore {
     // ===============================================================
 
     match /userStats/{uid} {
-      allow read: if isOwner(uid) || (isAuthenticated() && request.auth.uid in resource.data.get('friends', []));
+      allow read: if isOwner(uid);
       allow create: if isOwner(uid) && isValidUserStats(request.resource.data) && uidUnchanged();
-      allow update: if (isOwner(uid) && isValidUserStats(request.resource.data) && uidNotModified()) ||
-                    (isAuthenticated() && 
-                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['friends']) &&
-                     request.resource.data.friends.hasAll(resource.data.get('friends', [])) &&
-                     request.resource.data.friends.size() == resource.data.get('friends', []).size() + 1 &&
-                     request.auth.uid in request.resource.data.friends &&
-                     !(request.auth.uid in resource.data.get('friends', [])) &&
-                     isFriendRequestAccepted(request.auth.uid, uid));
+      allow update: if isOwner(uid) && isValidUserStats(request.resource.data) && uidNotModified();
       allow delete: if isOwner(uid);
-    }
-
-    match /publicProfiles/{uid} {
-      allow read: if isAuthenticated();
-      allow create: if isOwner(uid) && isValidPublicProfile(request.resource.data) && uidUnchanged();
-      allow update: if isOwner(uid) && isValidPublicProfile(request.resource.data) && uidNotModified();
-      allow delete: if isOwner(uid);
-    }
-
-    match /friendRequests/{requestId} {
-      allow read: if isAuthenticated() && (resource == null || resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
-      allow create: if isAuthenticated() && request.resource.data.fromUid == request.auth.uid && isValidFriendRequest(request.resource.data);
-      allow update: if isAuthenticated() && (
-        (resource.data.toUid == request.auth.uid && request.resource.data.status in ['accepted', 'rejected'] && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])) ||
-        (resource.data.fromUid == request.auth.uid && request.resource.data.status == 'rejected' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
-      ) && isValidFriendRequest(request.resource.data);
-      allow delete: if isAuthenticated() && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
     }
 
     match /quests/{questId} {

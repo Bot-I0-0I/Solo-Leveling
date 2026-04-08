@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp } from '../db/db';
-import { generateReview } from '../services/aiService';
 import { cn, getRank } from '../lib/utils';
-import { BookOpen, CheckCircle, Plus, Calendar, Wand2 } from 'lucide-react';
+import { BookOpen, CheckCircle, Plus, Calendar } from 'lucide-react';
 import { format, startOfWeek, subDays, isAfter } from 'date-fns';
 
 export function ReviewView() {
@@ -14,15 +13,8 @@ export function ReviewView() {
   const [challenges, setChallenges] = useState('');
   const [intentions, setIntentions] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
 
   const pendingReview = reviews?.find(r => r.status === 'pending');
-
-  React.useEffect(() => {
-    if (pendingReview && !accomplishments && !challenges && !intentions && !isGenerating) {
-      handleAutoGenerate();
-    }
-  }, [pendingReview]);
 
   if (!reviews || !userStats) return <div className="opacity-80">Loading Archives...</div>;
 
@@ -44,47 +36,6 @@ export function ReviewView() {
         intentions: '',
         status: 'pending'
       });
-    }
-  };
-
-  const handleAutoGenerate = async () => {
-    setIsGenerating(true);
-    try {
-      const weekStart = pendingReview?.weekStartDate || format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
-      const startDate = new Date(weekStart);
-      
-      // Fetch data for the week
-      const allQuests = await db.quests.toArray();
-      const completedQuests = allQuests.filter(q => q.completed && new Date(q.date) >= startDate);
-      const failedQuests = allQuests.filter(q => !q.completed && new Date(q.date) >= startDate);
-      
-      const allLogs = await db.nutritionLogs.toArray();
-      const weekLogs = allLogs.filter(l => new Date(l.date) >= startDate);
-      const workouts = weekLogs.filter(l => l.type === 'exercise');
-      
-      const allLedger = await db.ledger.toArray();
-      const weekLedger = allLedger.filter(l => new Date(l.date) >= startDate);
-      const income = weekLedger.filter(l => l.type === 'income').reduce((acc, l) => acc + l.amount, 0);
-      const expenses = weekLedger.filter(l => l.type === 'expense').reduce((acc, l) => acc + l.amount, 0);
-
-      const stats = {
-        completedQuests: completedQuests.length,
-        failedQuests: failedQuests.length,
-        workouts: workouts.length,
-        income,
-        expenses,
-        notableWins: completedQuests.slice(0, 3).map(q => q.title)
-      };
-
-      const data = await generateReview(stats);
-
-      setAccomplishments(data.accomplishments || '');
-      setChallenges(data.challenges || '');
-      setIntentions(data.intentions || '');
-    } catch (error) {
-      console.error("Error auto-generating review:", error);
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -131,14 +82,6 @@ export function ReviewView() {
               <BookOpen className="w-5 h-5 mr-2" style={{ color: themeColor }} />
               PENDING CALIBRATION: WEEK OF {pendingReview.weekStartDate}
             </h3>
-            <button
-              onClick={handleAutoGenerate}
-              disabled={isGenerating}
-              className="flex items-center text-xs font-mono px-3 py-1.5 rounded bg-[#0A0A0A] border border-[#262626] hover:border-indigo-400 text-[#A3A3A3] hover:text-white transition-colors"
-            >
-              <Wand2 className="w-3 h-3 mr-1.5 text-indigo-400" />
-              {isGenerating ? 'GENERATING...' : 'AUTO-GENERATE'}
-            </button>
           </div>
           
           <div className="space-y-6">

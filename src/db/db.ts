@@ -25,7 +25,6 @@ export interface UserStats {
   useRankTheme?: boolean;
   selectedColor?: string;
   uid?: string;
-  friends?: string[];
 }
 
 export interface Quest {
@@ -304,8 +303,7 @@ db.on('populate', async () => {
     credits: 0,
     xp: 0,
     lastResetDate: new Date().toISOString().split('T')[0],
-    uid: crypto.randomUUID(),
-    friends: []
+    uid: crypto.randomUUID()
   });
 
   await db.shopItems.bulkAdd([

@@ -4,11 +4,11 @@ import { persist } from 'zustand/middleware';
 interface AppState {
   isCloaked: boolean;
   theme: 'dark' | 'light';
-  currentView: 'status' | 'quests' | 'dungeons' | 'tactical' | 'store' | 'reviews' | 'scheduler' | 'ledger' | 'settings' | 'nutrition' | 'hub' | 'friends';
+  currentView: 'status' | 'quests' | 'dungeons' | 'tactical' | 'store' | 'reviews' | 'scheduler' | 'ledger' | 'settings' | 'nutrition' | 'hub';
   levelUpModal: number | null;
   toggleCloak: () => void;
   toggleTheme: () => void;
-  setView: (view: 'status' | 'quests' | 'dungeons' | 'tactical' | 'store' | 'reviews' | 'scheduler' | 'ledger' | 'settings' | 'nutrition' | 'hub' | 'friends') => void;
+  setView: (view: 'status' | 'quests' | 'dungeons' | 'tactical' | 'store' | 'reviews' | 'scheduler' | 'ledger' | 'settings' | 'nutrition' | 'hub') => void;
   setLevelUpModal: (level: number | null) => void;
 }
 

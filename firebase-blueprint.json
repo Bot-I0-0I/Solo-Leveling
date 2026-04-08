@@ -21,40 +21,9 @@
         "notes": { "type": "string", "description": "User's notes" },
         "fitnessGoal": { "type": "string", "enum": ["lose", "maintain", "build"], "description": "User's fitness goal" },
         "activityLevel": { "type": "string", "enum": ["sedentary", "light", "moderate", "active", "very_active"], "description": "User's activity level" },
-        "friends": { "type": "array", "items": { "type": "string" }, "description": "List of friend UIDs" },
         "uid": { "type": "string", "description": "Firebase Auth UID" }
       },
       "required": ["STR", "VIT", "AGI", "INT", "SEN", "credits", "xp", "lastResetDate", "uid"]
-    },
-    "PublicProfile": {
-      "title": "PublicProfile",
-      "description": "Public user profile for searching and friending.",
-      "type": "object",
-      "properties": {
-        "uid": { "type": "string", "description": "Firebase Auth UID" },
-        "email": { "type": "string", "description": "User's email" },
-        "name": { "type": "string", "description": "User's name" },
-        "avatar": { "type": "string", "description": "User's avatar URL" },
-        "level": { "type": "number", "description": "User's level" },
-        "rank": { "type": "string", "description": "User's rank" },
-        "isGuest": { "type": "boolean", "description": "Whether the user is a guest" }
-      },
-      "required": ["uid", "email", "name", "level", "rank"]
-    },
-    "FriendRequest": {
-      "title": "FriendRequest",
-      "description": "Friend request between users.",
-      "type": "object",
-      "properties": {
-        "fromUid": { "type": "string", "description": "Sender UID" },
-        "toUid": { "type": "string", "description": "Recipient UID" },
-        "fromEmail": { "type": "string", "description": "Sender email" },
-        "toEmail": { "type": "string", "description": "Recipient email" },
-        "fromName": { "type": "string", "description": "Sender name" },
-        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"], "description": "Request status" },
-        "createdAt": { "type": "string", "description": "Creation timestamp" }
-      },
-      "required": ["fromUid", "toUid", "fromEmail", "toEmail", "fromName", "status", "createdAt"]
     },
     "Quest": {
       "title": "Quest",
@@ -269,14 +238,6 @@
     "tacticalLogs/{logId}": {
       "schema": { "$ref": "#/entities/TacticalLog" },
       "description": "User tactical logs."
-    },
-    "publicProfiles/{uid}": {
-      "schema": { "$ref": "#/entities/PublicProfile" },
-      "description": "Public user profiles."
-    },
-    "friendRequests/{requestId}": {
-      "schema": { "$ref": "#/entities/FriendRequest" },
-      "description": "Friend requests."
     },
     "missionLogs/{logId}": {
       "schema": { "$ref": "#/entities/MissionLog" },

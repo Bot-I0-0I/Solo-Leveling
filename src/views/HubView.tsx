@@ -51,7 +51,6 @@ export function HubView() {
     {
       title: "SYSTEM",
       items: [
-        { id: 'friends', icon: Users, label: 'Network', desc: 'Allies & Connections' },
         { id: 'settings', icon: Settings, label: 'Settings', desc: 'Interface & Identity' },
       ]
     }

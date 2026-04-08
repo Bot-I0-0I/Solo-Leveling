@@ -16,7 +16,6 @@ import { LedgerView } from './views/LedgerView';
 import { SettingsView } from './views/SettingsView';
 import { NutritionView } from './views/NutritionView';
 import { HubView } from './views/HubView';
-import { FriendsView } from './views/FriendsView';
 import { LevelUpModal } from './components/LevelUpModal';
 import { useStore } from './store/useStore';
 import { useSystemEngine } from './db/engine';
@@ -57,7 +56,6 @@ export default function App() {
       {currentView === 'nutrition' && <NutritionView />}
       {currentView === 'settings' && <SettingsView />}
       {currentView === 'hub' && <HubView />}
-      {currentView === 'friends' && <FriendsView />}
       
       {levelUpModal !== null && (
         <LevelUpModal level={levelUpModal} onClose={() => setLevelUpModal(null)} />
