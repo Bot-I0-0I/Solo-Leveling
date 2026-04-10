@@ -20,15 +20,23 @@ export function useCloudSync() {
     const syncData = async () => {
       setIsSyncing(true);
       try {
+        const localStats = await localDb.userStats.get(1);
+        const isLocalOwnedByUser = localStats && localStats.uid === user.uid;
+
         // 1. Check if cloud has data
         const userStatsRef = doc(cloudDb, 'userStats', user.uid);
         const userStatsSnap = await getDoc(userStatsRef);
 
-        if (userStatsSnap.exists()) {
-          // Cloud has data, pull to local
-          await pullFromCloud(user.uid);
+        if (!isLocalOwnedByUser) {
+          if (userStatsSnap.exists()) {
+            // New device or account switch: pull from cloud
+            await pullFromCloud(user.uid);
+          } else {
+            // First time login: push local guest data to cloud
+            await pushToCloud(user.uid);
+          }
         } else {
-          // Cloud is empty, push local to cloud
+          // Page refresh: push local data to cloud to ensure backup
           await pushToCloud(user.uid);
         }
         setLastSync(new Date());
@@ -75,7 +83,11 @@ export function useCloudSync() {
       if (localStats) {
         const statsRef = doc(cloudDb, 'userStats', uid);
         const cleanedStats = cleanData({ ...localStats, uid });
-        delete cleanedStats.penaltyActive; // Remove deprecated field
+        // Explicitly remove legacy fields that might still be in IndexedDB
+        delete cleanedStats.penaltyActive;
+        delete cleanedStats.friends;
+        delete cleanedStats.publicProfile;
+        delete cleanedStats.friendRequests;
         addToBatch(statsRef, cleanedStats);
       }
 
@@ -175,7 +187,7 @@ export function useCloudSync() {
       if (statsSnap.exists()) {
         const data = statsSnap.data();
         const { uid: _, penaltyActive, ...localData } = data;
-        await localDb.userStats.put({ ...localData, id: 1 } as any);
+        await localDb.userStats.put({ ...localData, id: 1, uid } as any);
       }
 
       // Helper to fetch and sync collections

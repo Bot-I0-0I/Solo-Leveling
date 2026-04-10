@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider, signOut, signInAnonymously } from 'firebase/auth';
+import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import { toast } from 'sonner';
 
@@ -31,25 +31,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
+        if (currentUser.isAnonymous) {
+          // Migrate legacy anonymous users to purely local guests
+          await signOut(auth);
+          return; // The state will update on the next onAuthStateChanged trigger
+        }
         setUser(currentUser);
-        setIsGuest(currentUser.isAnonymous);
+        setIsGuest(false);
         setLoading(false);
       } else {
-        // Sign in anonymously for guests
-        try {
-          const result = await signInAnonymously(auth);
-          setUser(result.user);
-          setIsGuest(true);
-        } catch (error: any) {
-          console.error("Error signing in anonymously", error);
-          if (error.code === 'auth/admin-restricted-operation') {
-            toast.error("Guest login disabled. Please enable 'Anonymous' sign-in provider in Firebase Console > Authentication > Sign-in method.");
-          }
-          setUser(null);
-          setIsGuest(false);
-        } finally {
-          setLoading(false);
-        }
+        // Store data locally for guests without requiring Firebase anonymous auth
+        setUser(null);
+        setIsGuest(true);
+        setLoading(false);
       }
     });
 
