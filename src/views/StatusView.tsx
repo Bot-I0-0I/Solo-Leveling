@@ -239,7 +239,6 @@ export function StatusView() {
             </svg>
           </div>
         </div>
-      </div>
 
         {/* Clean List Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
