@@ -194,7 +194,17 @@ export function NutritionView() {
     await db.nutritionLogs.add(logData);
 
     if (activeTab === 'exercise') {
-      await addXp(parseInt(calories) / 10); // 1 XP per 10 calories burned
+      const xpGained = parseInt(calories) * 2 + 500; // Generous XP to make leveling easy
+      await addXp(xpGained);
+      if (muscleGroup) {
+        const stats = await db.userStats.get(1);
+        if (stats) {
+          const xpField = `${muscleGroup}Xp` as keyof typeof stats;
+          await db.userStats.update(1, {
+            [xpField]: ((stats[xpField] as number) || 0) + xpGained
+          });
+        }
+      }
     }
 
     setName('');
@@ -315,48 +325,71 @@ export function NutritionView() {
     load: Math.round(load)
   }));
 
+  // Recovery Status Calculation
+  const last7DaysLogs = vesselLogs?.filter(log => {
+    const logDate = new Date(log.date);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return logDate >= sevenDaysAgo;
+  }) || [];
+
+  const sleepLogs = last7DaysLogs.filter(l => l.sleepHours !== undefined);
+  const avgSleep = sleepLogs.length > 0 
+    ? sleepLogs.reduce((sum, l) => sum + (l.sleepHours || 0), 0) / sleepLogs.length 
+    : 0;
+
+  let recoveryStatus = 'Unknown';
+  if (avgSleep > 0) {
+    if (avgSleep >= 7 && avgSleep <= 9) {
+      recoveryStatus = 'Optimal';
+    } else if (avgSleep >= 6) {
+      recoveryStatus = 'Fair';
+    } else {
+      recoveryStatus = 'Poor';
+    }
+  }
+
   return (
-    <div className="space-y-6 md:space-y-8">
-      <header className="border-b border-[#262626] pb-4 md:pb-6">
-        <h2 className="text-2xl md:text-3xl font-mono font-bold tracking-tight text-white flex items-center">
-          <Flame className="w-6 h-6 md:w-8 md:h-8 mr-3" style={{ color: themeColor }} />
+    <div className="space-y-6 md:space-y-8 pb-10">
+      <header className="hidden md:block border-b border-[#262626] pb-4 md:pb-6">
+        <h2 className="text-2xl md:text-3xl font-mono font-bold tracking-tight text-white flex items-center uppercase" style={{ color: themeColor }}>
           METABOLIC ENGINE
         </h2>
-        <p className="text-[#A3A3A3] text-xs md:text-sm mt-1">Advanced tracking for caloric intake, macros, and physical exertion.</p>
+        <p className="text-[#A3A3A3] text-xs md:text-sm mt-1 font-mono uppercase">Advanced tracking for caloric intake, macros, and physical exertion.</p>
       </header>
 
       {/* Metabolic Profile */}
       {bmr > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-bl-full" />
-            <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center">
+          <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#262626]"></div>
+            <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center uppercase">
               <Activity className="w-3 h-3 mr-1" />
               BASAL METABOLIC RATE
             </div>
-            <div className="text-2xl font-mono font-bold text-white">{Math.round(bmr)} <span className="text-sm text-[#A3A3A3]">kcal</span></div>
-            <div className="text-[10px] font-mono text-[#A3A3A3] mt-1">Calories burned at rest</div>
+            <div className="text-2xl font-mono font-bold text-white">{Math.round(bmr)} <span className="text-sm text-[#A3A3A3]">KCAL</span></div>
+            <div className="text-[10px] font-mono text-[#A3A3A3] mt-1 uppercase tracking-widest">Calories burned at rest</div>
           </div>
           
-          <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-orange-500/5 to-transparent rounded-bl-full" />
-            <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center">
+          <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#262626]"></div>
+            <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center uppercase">
               <Flame className="w-3 h-3 mr-1" />
               TOTAL DAILY ENERGY (TDEE)
             </div>
-            <div className="text-2xl font-mono font-bold text-orange-400">{Math.round(tdee)} <span className="text-sm text-orange-400/50">kcal</span></div>
-            <div className="text-[10px] font-mono text-[#A3A3A3] mt-1">Maintenance calories</div>
+            <div className="text-2xl font-mono font-bold text-orange-400">{Math.round(tdee)} <span className="text-sm text-orange-400/50">KCAL</span></div>
+            <div className="text-[10px] font-mono text-[#A3A3A3] mt-1 uppercase tracking-widest">Maintenance calories</div>
           </div>
 
-          <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-green-500/5 to-transparent rounded-bl-full" />
-            <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center">
+          <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 relative overflow-hidden group">
+            <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#262626]"></div>
+            <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center uppercase">
               <Activity className="w-3 h-3 mr-1" />
               BMI INDEX
             </div>
             <div className="text-2xl font-mono font-bold text-white">{bmi?.toFixed(1)}</div>
             <div className={cn(
-              "text-[10px] font-mono mt-1",
+              "text-[10px] font-mono mt-1 uppercase tracking-widest",
               bmiCategory === 'Optimal' ? "text-green-400" :
               bmiCategory === 'Underweight' ? "text-blue-400" :
               "text-red-400"
@@ -365,48 +398,51 @@ export function NutritionView() {
             </div>
           </div>
 
-          <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-purple-500/5 to-transparent rounded-bl-full" />
-            <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center">
+          <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 relative overflow-hidden group">
+            <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#262626]"></div>
+            <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center uppercase">
               <Target className="w-3 h-3 mr-1" />
               OPTIMAL CAPACITY
             </div>
             <div className="text-2xl font-mono font-bold text-white">
-              {idealWeightMin.toFixed(1)}<span className="text-sm text-[#A3A3A3]">-</span>{idealWeightMax.toFixed(1)} <span className="text-sm text-[#A3A3A3]">kg</span>
+              {idealWeightMin.toFixed(1)}<span className="text-sm text-[#A3A3A3]">-</span>{idealWeightMax.toFixed(1)} <span className="text-sm text-[#A3A3A3]">KG</span>
             </div>
-            <div className="text-[10px] font-mono text-[#A3A3A3] mt-1">Target weight range</div>
+            <div className="text-[10px] font-mono text-[#A3A3A3] mt-1 uppercase tracking-widest">Target weight range</div>
           </div>
         </div>
       ) : (
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 text-center">
-          <p className="text-[#A3A3A3] font-mono text-sm">Please update your profile (height, age, gender) and log your weight to calculate your metabolic profile.</p>
+        <div className="bg-[#0A0A0A] border border-dashed border-[#262626] rounded-sm p-6 text-center">
+          <p className="text-[#A3A3A3] font-mono text-xs tracking-widest uppercase">Please update your profile (height, age, gender) and log your weight to calculate your metabolic profile.</p>
         </div>
       )}
 
       {/* Professional Dashboard */}
       {bmr > 0 && (
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 md:p-6">
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-5 md:p-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2" style={{ borderColor: themeColor }}></div>
+          <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2" style={{ borderColor: themeColor }}></div>
+          
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div>
-              <h3 className="text-lg font-mono text-white flex items-center">
+              <h3 className="text-lg font-mono text-white flex items-center font-bold tracking-widest uppercase">
                 <Target className="w-5 h-5 mr-2" style={{ color: themeColor }} />
                 DAILY TARGET: {goalLabel}
               </h3>
             </div>
             <div className="text-left md:text-right">
-              <div className="text-3xl font-mono text-white">
-                {netCalories} <span className="text-sm text-[#A3A3A3]">/ {targetCalories} kcal</span>
+              <div className="text-3xl font-mono text-white font-black">
+                {netCalories} <span className="text-sm text-[#A3A3A3]">/ {targetCalories} KCAL</span>
               </div>
-              <div className={cn("text-xs font-mono mt-1", remainingCalories >= 0 ? "text-green-400" : "text-red-400")}>
+              <div className={cn("text-[10px] font-mono mt-1 tracking-widest uppercase", remainingCalories >= 0 ? "text-green-400" : "text-red-400")}>
                 {remainingCalories >= 0 ? `${remainingCalories} REMAINING` : `${Math.abs(remainingCalories)} OVER LIMIT`}
               </div>
             </div>
           </div>
 
           {/* Calorie Progress Bar */}
-          <div className="w-full bg-[#0A0A0A] rounded-full h-3 mb-8 border border-[#262626] overflow-hidden">
+          <div className="w-full bg-[#141414] rounded-sm h-2 mb-8 border border-[#262626] overflow-hidden">
             <div 
-              className="h-full rounded-full transition-all duration-500"
+              className="h-full transition-all duration-500"
               style={{ 
                 width: `${targetCalories > 0 ? Math.min((netCalories / targetCalories) * 100, 100) : 0}%`,
                 backgroundColor: netCalories > targetCalories ? '#ef4444' : themeColor 
@@ -417,48 +453,48 @@ export function NutritionView() {
           {/* Macros Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
             {/* Protein */}
-            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-3 md:p-4">
+            <div className="bg-[#141414] border border-[#262626] rounded-sm p-3 md:p-4">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-mono text-[#A3A3A3] flex items-center">
+                <span className="text-[10px] font-mono text-[#A3A3A3] flex items-center tracking-widest uppercase">
                   <Beef className="w-3 h-3 mr-1 text-red-400" /> PROTEIN
                 </span>
-                <span className="text-xs font-mono text-white">{consumedProtein} / {targetProtein}g</span>
+                <span className="text-[10px] font-mono text-white tracking-widest">{consumedProtein} / {targetProtein}G</span>
               </div>
-              <div className="w-full bg-[#1A1A1A] rounded-full h-1.5 overflow-hidden">
+              <div className="w-full bg-[#0A0A0A] rounded-sm h-1 overflow-hidden">
                 <div 
-                  className="h-full bg-red-400 rounded-full transition-all duration-500"
+                  className="h-full bg-red-400 transition-all duration-500"
                   style={{ width: `${targetProtein > 0 ? Math.min((consumedProtein / targetProtein) * 100, 100) : 0}%` }}
                 />
               </div>
             </div>
 
             {/* Carbs */}
-            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-3 md:p-4">
+            <div className="bg-[#141414] border border-[#262626] rounded-sm p-3 md:p-4">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-mono text-[#A3A3A3] flex items-center">
+                <span className="text-[10px] font-mono text-[#A3A3A3] flex items-center tracking-widest uppercase">
                   <Wheat className="w-3 h-3 mr-1 text-yellow-400" /> CARBS
                 </span>
-                <span className="text-xs font-mono text-white">{consumedCarbs} / {targetCarbs}g</span>
+                <span className="text-[10px] font-mono text-white tracking-widest">{consumedCarbs} / {targetCarbs}G</span>
               </div>
-              <div className="w-full bg-[#1A1A1A] rounded-full h-1.5 overflow-hidden">
+              <div className="w-full bg-[#0A0A0A] rounded-sm h-1 overflow-hidden">
                 <div 
-                  className="h-full bg-yellow-400 rounded-full transition-all duration-500"
+                  className="h-full bg-yellow-400 transition-all duration-500"
                   style={{ width: `${targetCarbs > 0 ? Math.min((consumedCarbs / targetCarbs) * 100, 100) : 0}%` }}
                 />
               </div>
             </div>
 
             {/* Fat */}
-            <div className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-3 md:p-4">
+            <div className="bg-[#141414] border border-[#262626] rounded-sm p-3 md:p-4">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-mono text-[#A3A3A3] flex items-center">
+                <span className="text-[10px] font-mono text-[#A3A3A3] flex items-center tracking-widest uppercase">
                   <Droplets className="w-3 h-3 mr-1 text-blue-400" /> FAT
                 </span>
-                <span className="text-xs font-mono text-white">{consumedFat} / {targetFat}g</span>
+                <span className="text-[10px] font-mono text-white tracking-widest">{consumedFat} / {targetFat}G</span>
               </div>
-              <div className="w-full bg-[#1A1A1A] rounded-full h-1.5 overflow-hidden">
+              <div className="w-full bg-[#0A0A0A] rounded-sm h-1 overflow-hidden">
                 <div 
-                  className="h-full bg-blue-400 rounded-full transition-all duration-500"
+                  className="h-full bg-blue-400 transition-all duration-500"
                   style={{ width: `${targetFat > 0 ? Math.min((consumedFat / targetFat) * 100, 100) : 0}%` }}
                 />
               </div>
@@ -521,32 +557,36 @@ export function NutritionView() {
 
       {/* Summary Cards (Consumed vs Burned vs Water) */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 md:p-6 relative overflow-hidden">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-[10px] md:text-xs font-mono text-[#A3A3A3]">CONSUMED</span>
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 md:p-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-green-400"></div>
+          <div className="flex justify-between items-center mb-2 pl-2">
+            <span className="text-[10px] md:text-xs font-mono text-[#A3A3A3] tracking-widest uppercase">CONSUMED</span>
             <Utensils className="w-4 h-4 text-green-400" />
           </div>
-          <div className="text-xl md:text-3xl font-mono text-white">{consumedCalories} <span className="text-[10px] md:text-sm text-[#A3A3A3]">kcal</span></div>
+          <div className="text-xl md:text-3xl font-black font-mono text-white pl-2">{consumedCalories} <span className="text-[10px] md:text-sm text-[#A3A3A3]">KCAL</span></div>
         </div>
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 md:p-6 relative overflow-hidden">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-[10px] md:text-xs font-mono text-[#A3A3A3]">BURNED</span>
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 md:p-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-red-400"></div>
+          <div className="flex justify-between items-center mb-2 pl-2">
+            <span className="text-[10px] md:text-xs font-mono text-[#A3A3A3] tracking-widest uppercase">BURNED</span>
             <Activity className="w-4 h-4 text-red-400" />
           </div>
-          <div className="text-xl md:text-3xl font-mono text-white">{burnedCalories} <span className="text-[10px] md:text-sm text-[#A3A3A3]">kcal</span></div>
+          <div className="text-xl md:text-3xl font-black font-mono text-white pl-2">{burnedCalories} <span className="text-[10px] md:text-sm text-[#A3A3A3]">KCAL</span></div>
         </div>
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 md:p-6 relative overflow-hidden">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-[10px] md:text-xs font-mono text-[#A3A3A3]">HYDRATION</span>
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 md:p-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-blue-400"></div>
+          <div className="flex justify-between items-center mb-2 pl-2">
+            <span className="text-[10px] md:text-xs font-mono text-[#A3A3A3] tracking-widest uppercase">HYDRATION</span>
             <Droplets className="w-4 h-4 text-blue-400" />
           </div>
-          <div className="text-xl md:text-3xl font-mono text-white">{consumedWater} <span className="text-[10px] md:text-sm text-[#A3A3A3]">ml</span></div>
+          <div className="text-xl md:text-3xl font-black font-mono text-white pl-2">{consumedWater} <span className="text-[10px] md:text-sm text-[#A3A3A3]">ML</span></div>
         </div>
       </div>
 
       {/* Muscle Load Visualization */}
-      <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 md:p-6">
-        <h3 className="text-lg font-mono text-white mb-4 flex items-center">
+      <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 md:p-6 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-[#262626]"></div>
+        <h3 className="text-lg font-mono text-white mb-4 flex items-center font-bold tracking-widest uppercase">
           <Dumbbell className="w-5 h-5 mr-2" style={{ color: themeColor }} />
           MUSCLE LOAD (7-DAY ESTIMATION)
         </h3>
@@ -573,35 +613,36 @@ export function NutritionView() {
       </div>
 
       {/* Sleep & Recovery Card */}
-      <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 md:p-6">
-        <h3 className="text-lg font-mono text-white mb-4 flex items-center">
+      <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 md:p-6 relative overflow-hidden">
+        <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-[#262626]"></div>
+        <h3 className="text-lg font-mono text-white mb-4 flex items-center font-bold tracking-widest uppercase">
           <Moon className="w-5 h-5 mr-2 text-indigo-400" />
           SLEEP & RECOVERY
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
-            <div className="text-3xl font-mono text-white mb-2">
-              {todayLog?.sleepHours || 0} <span className="text-sm text-[#A3A3A3]">hrs logged today</span>
+            <div className="text-3xl font-black font-mono text-white mb-2">
+              {todayLog?.sleepHours || 0} <span className="text-sm font-normal text-[#A3A3A3] tracking-widest uppercase">HRS LOGGED TODAY</span>
             </div>
-            <p className="text-xs text-[#A3A3A3] font-mono leading-relaxed">
+            <p className="text-xs text-[#A3A3A3] font-mono leading-relaxed uppercase tracking-wider">
               Optimal sleep (7-9 hours) is critical for metabolic health, muscle recovery, and cognitive function. Lack of sleep increases cortisol and decreases insulin sensitivity, hindering fat loss and muscle growth.
             </p>
           </div>
           <div className="flex items-end">
             <div className="w-full">
-              <label className="block text-xs font-mono text-[#A3A3A3] mb-1">LOG SLEEP (HOURS)</label>
+              <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">LOG SLEEP (HOURS)</label>
               <div className="flex gap-2">
                 <input 
                   type="number" 
                   step="0.5"
                   value={sleepHours}
                   onChange={(e) => setSleepHours(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-indigo-400"
-                  placeholder="e.g., 7.5"
+                  className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-indigo-400"
+                  placeholder="E.G., 7.5"
                 />
                 <button 
                   onClick={handleLogSleep}
-                  className="bg-[#262626] hover:bg-[#333] text-white px-4 py-2 rounded-md font-mono text-sm transition-colors border border-[#262626] hover:border-indigo-400"
+                  className="bg-[#262626] hover:bg-[#333] text-white px-6 py-2 rounded-sm font-mono text-xs font-bold tracking-widest transition-colors border border-[#262626] hover:border-indigo-400"
                 >
                   LOG
                 </button>
@@ -609,16 +650,43 @@ export function NutritionView() {
             </div>
           </div>
         </div>
+
+        {/* RECOVERY STATUS */}
+        <div className="pt-6 border-t border-[#262626]">
+          <div className="flex items-center space-x-2 mb-4">
+            <Activity className="w-4 h-4 text-[#A3A3A3]" />
+            <span className="text-xs font-mono font-bold tracking-widest text-[#A3A3A3]">RECOVERY STATUS</span>
+          </div>
+          
+          <div className="flex items-baseline space-x-2 mb-2">
+            <h3 className="text-2xl font-black font-mono text-white tracking-widest uppercase">{recoveryStatus}</h3>
+            <span className="text-xs font-mono text-[#A3A3A3]">({avgSleep > 0 ? avgSleep.toFixed(1) : '--'} HRS AVG)</span>
+          </div>
+          
+          <p className="text-xs font-mono text-[#A3A3A3] mb-6 leading-relaxed">
+            {recoveryStatus === 'Optimal' && "Your vessel is in an optimal state for muscle synthesis and cognitive recovery. Maintain current sleep patterns."}
+            {recoveryStatus === 'Fair' && "Recovery is adequate but could be improved. Aim for 7-9 hours of sleep to maximize growth and performance."}
+            {recoveryStatus === 'Poor' && "Warning: Insufficient recovery detected. Cortisol levels may be elevated, hindering muscle growth and fat loss. Prioritize rest."}
+            {recoveryStatus === 'Unknown' && "Insufficient data to determine recovery status. Log your sleep in the Metabolism tab."}
+          </p>
+          
+          <div className="flex space-x-1">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="w-2 h-6" style={{ backgroundColor: i <= (recoveryStatus === 'Optimal' ? 5 : recoveryStatus === 'Fair' ? 3 : recoveryStatus === 'Poor' ? 1 : 0) ? themeColor : '#262626' }}></div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         {/* Input Form */}
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 md:p-6">
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 md:p-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2" style={{ borderColor: themeColor }}></div>
           <div className="flex flex-wrap gap-4 mb-6 border-b border-[#262626]">
             <button
               onClick={() => setActiveTab('food')}
               className={cn(
-                "pb-2 text-sm font-mono transition-colors relative",
+                "pb-2 text-xs font-mono font-bold tracking-widest transition-colors relative uppercase",
                 activeTab === 'food' ? "text-white" : "text-[#A3A3A3] hover:text-white"
               )}
             >
@@ -630,7 +698,7 @@ export function NutritionView() {
             <button
               onClick={() => setActiveTab('exercise')}
               className={cn(
-                "pb-2 text-sm font-mono transition-colors relative",
+                "pb-2 text-xs font-mono font-bold tracking-widest transition-colors relative uppercase",
                 activeTab === 'exercise' ? "text-white" : "text-[#A3A3A3] hover:text-white"
               )}
             >
@@ -642,7 +710,7 @@ export function NutritionView() {
             <button
               onClick={() => setActiveTab('water')}
               className={cn(
-                "pb-2 text-sm font-mono transition-colors relative",
+                "pb-2 text-xs font-mono font-bold tracking-widest transition-colors relative uppercase",
                 activeTab === 'water' ? "text-white" : "text-[#A3A3A3] hover:text-white"
               )}
             >
@@ -656,66 +724,66 @@ export function NutritionView() {
           <form onSubmit={handleAddLog} className="space-y-4">
             {activeTab === 'water' ? (
               <div>
-                <label className="block text-xs font-mono text-[#A3A3A3] mb-1">AMOUNT (ml)</label>
+                <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">AMOUNT (ML)</label>
                 <input 
                   type="number" 
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none mb-3"
-                  placeholder="e.g., 250"
+                  className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-3 text-white font-mono text-sm focus:outline-none mb-3"
+                  placeholder="E.G., 250"
                   required
                 />
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setAmount('250')} className="flex-1 bg-[#1A1A1A] hover:bg-[#262626] border border-[#333] text-[#A3A3A3] py-2 rounded font-mono text-xs transition-colors">+250ml</button>
-                  <button type="button" onClick={() => setAmount('500')} className="flex-1 bg-[#1A1A1A] hover:bg-[#262626] border border-[#333] text-[#A3A3A3] py-2 rounded font-mono text-xs transition-colors">+500ml</button>
-                  <button type="button" onClick={() => setAmount('1000')} className="flex-1 bg-[#1A1A1A] hover:bg-[#262626] border border-[#333] text-[#A3A3A3] py-2 rounded font-mono text-xs transition-colors">+1L</button>
+                  <button type="button" onClick={() => setAmount('250')} className="flex-1 bg-[#141414] hover:bg-[#262626] border border-[#262626] text-[#A3A3A3] py-2 rounded-sm font-mono text-xs transition-colors">+250ML</button>
+                  <button type="button" onClick={() => setAmount('500')} className="flex-1 bg-[#141414] hover:bg-[#262626] border border-[#262626] text-[#A3A3A3] py-2 rounded-sm font-mono text-xs transition-colors">+500ML</button>
+                  <button type="button" onClick={() => setAmount('1000')} className="flex-1 bg-[#141414] hover:bg-[#262626] border border-[#262626] text-[#A3A3A3] py-2 rounded-sm font-mono text-xs transition-colors">+1L</button>
                 </div>
               </div>
             ) : (
               <>
                 {activeTab === 'food' && (
                   <div className="mb-4">
-                    <label className="block text-xs font-mono text-[#A3A3A3] mb-1 flex items-center">
+                    <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 flex items-center tracking-widest uppercase">
                       <Download className="w-3 h-3 mr-1" /> LOAD TEMPLATE
                     </label>
                     <select
                       value={selectedTemplateId}
                       onChange={(e) => handleLoadTemplate(e.target.value)}
-                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                      className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-3 text-white font-mono text-xs tracking-wider focus:outline-none focus:ring-1 transition-colors"
                       style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                     >
-                      <option value="">-- Select a saved food --</option>
+                      <option value="">-- SELECT A SAVED FOOD --</option>
                       {foodTemplates?.map(t => (
-                        <option key={t.id} value={t.id}>{t.name} ({t.calories} kcal)</option>
+                        <option key={t.id} value={t.id}>{t.name.toUpperCase()} ({t.calories} KCAL)</option>
                       ))}
                     </select>
                   </div>
                 )}
                 <div>
-                  <label className="block text-xs font-mono text-[#A3A3A3] mb-1">
+                  <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">
                     {activeTab === 'food' ? 'FOOD / MEAL NAME' : 'EXERCISE / ACTIVITY'}
                   </label>
                   <input 
                     type="text" 
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                    className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-3 text-white font-mono text-xs tracking-wider focus:outline-none focus:ring-1 transition-colors uppercase placeholder:text-[#555]"
                     style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
-                    placeholder={activeTab === 'food' ? "e.g., Grilled Chicken Salad" : "e.g., 5km Run"}
+                    placeholder={activeTab === 'food' ? "E.G., GRILLED CHICKEN SALAD" : "E.G., 5KM RUN"}
                     required
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-mono text-[#A3A3A3] mb-1">CALORIES</label>
+                    <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">CALORIES</label>
                     <input 
                       type="number" 
                       value={calories}
                       onChange={(e) => setCalories(e.target.value)}
-                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                      className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-3 text-white font-mono text-xs tracking-wider focus:outline-none focus:ring-1 transition-colors placeholder:text-[#555]"
                       style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
-                      placeholder="kcal"
+                      placeholder="KCAL"
                       required
                     />
                   </div>
@@ -723,68 +791,68 @@ export function NutritionView() {
                   {activeTab === 'food' ? (
                     <>
                       <div>
-                        <label className="block text-xs font-mono text-[#A3A3A3] mb-1">PROTEIN (g)</label>
+                        <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">PROTEIN (G)</label>
                         <input 
                           type="number" 
                           value={protein}
                           onChange={(e) => setProtein(e.target.value)}
-                          className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                          className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-3 text-white font-mono text-xs tracking-wider focus:outline-none focus:ring-1 transition-colors placeholder:text-[#555]"
                           style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
-                          placeholder="Optional"
+                          placeholder="OPTIONAL"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-mono text-[#A3A3A3] mb-1">CARBS (g)</label>
+                        <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">CARBS (G)</label>
                         <input 
                           type="number" 
                           value={carbs}
                           onChange={(e) => setCarbs(e.target.value)}
-                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                      className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-3 text-white font-mono text-xs tracking-wider focus:outline-none focus:ring-1 transition-colors placeholder:text-[#555]"
                       style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
-                      placeholder="Optional"
+                      placeholder="OPTIONAL"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-mono text-[#A3A3A3] mb-1">FAT (g)</label>
+                    <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">FAT (G)</label>
                     <input 
                       type="number" 
                       value={fat}
                       onChange={(e) => setFat(e.target.value)}
-                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                      className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-3 text-white font-mono text-xs tracking-wider focus:outline-none focus:ring-1 transition-colors placeholder:text-[#555]"
                       style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
-                      placeholder="Optional"
+                      placeholder="OPTIONAL"
                     />
                   </div>
                 </>
               ) : (
                 <>
                   <div>
-                    <label className="block text-xs font-mono text-[#A3A3A3] mb-1">DURATION (MIN)</label>
+                    <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">DURATION (MIN)</label>
                     <input 
                       type="number" 
                       value={duration}
                       onChange={(e) => setDuration(e.target.value)}
-                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                      className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-3 text-white font-mono text-xs tracking-wider focus:outline-none focus:ring-1 transition-colors placeholder:text-[#555]"
                       style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
-                      placeholder="Optional"
+                      placeholder="OPTIONAL"
                     />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs font-mono text-[#A3A3A3] mb-1">PRIMARY MUSCLE GROUP</label>
+                    <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">PRIMARY MUSCLE GROUP</label>
                     <select 
                       value={muscleGroup}
                       onChange={(e) => setMuscleGroup(e.target.value as any)}
-                      className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                      className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-3 text-white font-mono text-xs tracking-wider focus:outline-none focus:ring-1 transition-colors uppercase"
                       style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                     >
-                      <option value="">None / Full Body</option>
-                      <option value="chest">Chest</option>
-                      <option value="back">Back</option>
-                      <option value="legs">Legs</option>
-                      <option value="arms">Arms</option>
-                      <option value="shoulders">Shoulders</option>
-                      <option value="core">Core</option>
-                      <option value="cardio">Cardio</option>
+                      <option value="">NONE / FULL BODY</option>
+                      <option value="chest">CHEST</option>
+                      <option value="back">BACK</option>
+                      <option value="legs">LEGS</option>
+                      <option value="arms">ARMS</option>
+                      <option value="shoulders">SHOULDERS</option>
+                      <option value="core">CORE</option>
+                      <option value="cardio">CARDIO</option>
                     </select>
                   </div>
                 </>
@@ -796,9 +864,10 @@ export function NutritionView() {
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="flex-1 mt-4 flex items-center justify-center space-x-2 bg-[#0A0A0A] border border-[#262626] hover:border-[#333] px-4 py-3 rounded-md transition-colors text-white font-mono text-sm"
+                className="flex-1 mt-4 flex items-center justify-center space-x-2 border border-[#262626] px-4 py-3 rounded-sm transition-colors text-black font-mono text-xs font-bold tracking-widest uppercase"
+                style={{ backgroundColor: themeColor }}
               >
-                <Plus className="w-4 h-4" style={{ color: themeColor }} />
+                <Plus className="w-4 h-4 text-black" />
                 <span>ADD LOG</span>
               </button>
               {activeTab === 'food' && (
@@ -816,20 +885,21 @@ export function NutritionView() {
         </div>
 
         {/* Today's Logs */}
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 md:p-6">
-          <h3 className="text-lg font-mono text-white mb-4 flex items-center">
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 md:p-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-[#262626]"></div>
+          <h3 className="text-lg font-mono text-white mb-4 flex items-center font-bold tracking-widest uppercase">
             <Activity className="w-5 h-5 mr-2" style={{ color: themeColor }} />
             TODAY'S LOGS
           </h3>
           
           <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
             {nutritionLogs.length === 0 ? (
-              <div className="text-center py-8 text-[#A3A3A3] font-mono text-sm border border-dashed border-[#262626] rounded-lg">
-                No logs recorded today.
+              <div className="text-center py-8 text-[#A3A3A3] font-mono text-xs tracking-widest uppercase border border-dashed border-[#262626] rounded-sm">
+                NO LOGS RECORDED TODAY.
               </div>
             ) : (
               nutritionLogs.map((log) => (
-                <div key={log.id} className="flex items-center justify-between p-3 bg-[#0A0A0A] border border-[#262626] rounded-lg">
+                <div key={log.id} className="flex items-center justify-between p-3 bg-[#141414] border border-[#262626] rounded-sm">
                   <div className="flex items-center space-x-3">
                     {log.type === 'food' ? (
                       <Utensils className="w-4 h-4 text-green-400" />
@@ -837,19 +907,19 @@ export function NutritionView() {
                       <Activity className="w-4 h-4 text-red-400" />
                     )}
                     <div>
-                      <div className="text-sm font-mono text-white">{log.name}</div>
-                      <div className="text-xs font-mono text-[#A3A3A3] flex flex-wrap gap-2 mt-1">
-                        <span>{log.calories} kcal</span>
+                      <div className="text-xs font-mono text-white font-bold tracking-widest uppercase">{log.name}</div>
+                      <div className="text-[10px] font-mono text-[#A3A3A3] flex flex-wrap gap-2 mt-1 tracking-widest uppercase">
+                        <span>{log.calories} KCAL</span>
                         {log.type === 'food' && (
                           <>
-                            {log.protein && <span className="text-red-400">P:{log.protein}g</span>}
-                            {log.carbs && <span className="text-yellow-400">C:{log.carbs}g</span>}
-                            {log.fat && <span className="text-blue-400">F:{log.fat}g</span>}
+                            {log.protein && <span className="text-red-400">P:{log.protein}G</span>}
+                            {log.carbs && <span className="text-yellow-400">C:{log.carbs}G</span>}
+                            {log.fat && <span className="text-blue-400">F:{log.fat}G</span>}
                           </>
                         )}
                         {log.type === 'exercise' && (
                           <>
-                            {log.duration && <span>{log.duration} min</span>}
+                            {log.duration && <span>{log.duration} MIN</span>}
                             {log.muscleGroup && <span className="uppercase text-purple-400">{log.muscleGroup}</span>}
                           </>
                         )}
@@ -870,15 +940,17 @@ export function NutritionView() {
       </div>
 
       {/* Vessel Tracker & Growth Analysis */}
-      <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
-        <h3 className="text-lg font-mono text-white mb-4 flex items-center">
+      <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-[#262626]"></div>
+        <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-[#262626]"></div>
+        <h3 className="text-lg font-mono text-white mb-4 flex items-center font-bold tracking-widest uppercase">
           <Activity className="w-5 h-5 mr-2 text-blue-400" />
           VESSEL TRACKER
         </h3>
-        <p className="text-sm text-[#A3A3A3] mb-6">Log your physical capacity metrics and monitor vessel integrity over time.</p>
+        <p className="text-[10px] text-[#A3A3A3] mb-6 font-mono tracking-widest uppercase">Log your physical capacity metrics and monitor vessel integrity over time.</p>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 h-[300px] min-h-[250px] bg-[#0A0A0A] border border-[#262626] rounded-lg p-4">
+          <div className="lg:col-span-2 h-[300px] min-h-[250px] bg-[#141414] border border-[#262626] rounded-sm p-4">
             {vesselLogs && vesselLogs.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <LineChart data={vesselLogs.map(log => ({
@@ -892,17 +964,17 @@ export function NutritionView() {
                   <YAxis yAxisId="left" stroke="#A3A3A3" fontSize={10} domain={['dataMin - 2', 'dataMax + 2']} />
                   <YAxis yAxisId="right" orientation="right" stroke="#A3A3A3" fontSize={10} domain={[0, 'dataMax + 5']} hide />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#141414', borderColor: '#262626', color: '#fff' }}
+                    contentStyle={{ backgroundColor: '#0A0A0A', borderColor: '#262626', color: '#fff', borderRadius: '2px' }}
                     itemStyle={{ color: themeColor }}
                   />
-                  <Line yAxisId="left" type="monotone" dataKey="weight" name="Weight (kg)" stroke={themeColor} strokeWidth={2} dot={{ r: 4, fill: themeColor }} activeDot={{ r: 6 }} connectNulls />
-                  <Line yAxisId="right" type="monotone" dataKey="bodyFat" name="Body Fat %" stroke="#FFD700" strokeWidth={2} dot={{ r: 4, fill: '#FFD700' }} connectNulls />
-                  <Line yAxisId="right" type="monotone" dataKey="stressLevel" name="Stress (1-5)" stroke="#ef4444" strokeWidth={2} dot={{ r: 4, fill: '#ef4444' }} connectNulls />
+                  <Line yAxisId="left" type="monotone" dataKey="weight" name="WEIGHT (KG)" stroke={themeColor} strokeWidth={2} dot={{ r: 4, fill: themeColor }} activeDot={{ r: 6 }} connectNulls />
+                  <Line yAxisId="right" type="monotone" dataKey="bodyFat" name="BODY FAT %" stroke="#FFD700" strokeWidth={2} dot={{ r: 4, fill: '#FFD700' }} connectNulls />
+                  <Line yAxisId="right" type="monotone" dataKey="stressLevel" name="STRESS (1-5)" stroke="#ef4444" strokeWidth={2} dot={{ r: 4, fill: '#ef4444' }} connectNulls />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-[#A3A3A3] font-mono text-sm">
-                No vessel data logged yet.
+              <div className="w-full h-full flex items-center justify-center text-[#A3A3A3] font-mono text-xs tracking-widest uppercase">
+                NO VESSEL DATA LOGGED YET.
               </div>
             )}
           </div>
@@ -910,43 +982,43 @@ export function NutritionView() {
           <div>
             <form onSubmit={handleLogVessel} className="space-y-4">
               <div>
-                <label className="block text-xs font-mono text-[#A3A3A3] mb-1">WEIGHT (KG)</label>
+                <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">WEIGHT (KG)</label>
                 <input 
                   type="number" 
                   step="0.1"
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
-                  placeholder="e.g., 75.5" 
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                  placeholder="E.G., 75.5" 
+                  className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-3 text-white font-mono text-xs tracking-wider focus:outline-none focus:ring-1 transition-colors placeholder:text-[#555]"
                   style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                 />
               </div>
               <div>
-                <label className="block text-xs font-mono text-[#A3A3A3] mb-1">BODY FAT % (OPTIONAL)</label>
+                <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">BODY FAT % (OPTIONAL)</label>
                 <input 
                   type="number" 
                   step="0.1"
                   value={bodyFat}
                   onChange={(e) => setBodyFat(e.target.value)}
-                  placeholder="e.g., 15.2" 
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                  placeholder="E.G., 15.2" 
+                  className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-3 text-white font-mono text-xs tracking-wider focus:outline-none focus:ring-1 transition-colors placeholder:text-[#555]"
                   style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                 />
               </div>
               <div>
-                <label className="block text-xs font-mono text-[#A3A3A3] mb-1">STRESS (1-5)</label>
+                <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">STRESS (1-5)</label>
                 <input 
                   type="number" 
                   min="1"
                   max="5"
                   value={stressLevel}
                   onChange={(e) => setStressLevel(e.target.value)}
-                  placeholder="1 = Low" 
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                  placeholder="1 = LOW" 
+                  className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-3 text-white font-mono text-xs tracking-wider focus:outline-none focus:ring-1 transition-colors placeholder:text-[#555]"
                   style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                 />
               </div>
-              <button type="submit" className="w-full bg-[#262626] hover:bg-[#333] text-white px-4 py-3 rounded-md font-mono text-sm transition-colors flex items-center justify-center mt-2">
+              <button type="submit" className="w-full bg-[#262626] hover:bg-[#333] text-white px-4 py-3 rounded-sm font-mono text-xs font-bold tracking-widest transition-colors flex items-center justify-center mt-2 border border-[#262626] hover:border-blue-400 uppercase">
                 <Plus className="w-4 h-4 mr-2" /> LOG VESSEL DATA
               </button>
             </form>

@@ -108,39 +108,39 @@ export function HubView() {
 
       {/* Quick Stats Dashboard */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-white/5 to-transparent rounded-bl-full" />
-          <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center">
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#262626]"></div>
+          <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center uppercase">
             <Cpu className="w-3 h-3 mr-1" />
             CURRENT LEVEL
           </div>
           <div className="text-2xl font-mono font-bold text-white">{level}</div>
-          <div className="absolute bottom-0 left-0 h-1 bg-white/20 w-full">
+          <div className="absolute bottom-0 left-0 h-1 bg-[#141414] w-full">
             <div className="h-full" style={{ width: `${((userStats?.xp || 0) % 1000) / 10}%`, backgroundColor: themeColor }} />
           </div>
         </div>
         
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-yellow-500/5 to-transparent rounded-bl-full" />
-          <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center">
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#262626]"></div>
+          <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center uppercase">
             <Wallet className="w-3 h-3 mr-1" />
             TREASURY
           </div>
           <div className="text-2xl font-mono font-bold text-yellow-500">{credits.toLocaleString()} <span className="text-sm text-yellow-500/50">G</span></div>
         </div>
 
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-bl-full" />
-          <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center">
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 relative overflow-hidden group">
+          <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#262626]"></div>
+          <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center uppercase">
             <Shield className="w-3 h-3 mr-1" />
             ACTIVE QUESTS
           </div>
           <div className="text-2xl font-mono font-bold text-blue-400">{activeQuests}</div>
         </div>
 
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-purple-500/5 to-transparent rounded-bl-full" />
-          <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center">
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 relative overflow-hidden group">
+          <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#262626]"></div>
+          <div className="text-[#A3A3A3] text-[10px] font-mono tracking-widest mb-1 flex items-center uppercase">
             <Zap className="w-3 h-3 mr-1" />
             ENERGY
           </div>
@@ -150,7 +150,8 @@ export function HubView() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* System Logs */}
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 font-mono">
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-6 font-mono relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#262626]"></div>
           <h3 className="text-xs text-[#A3A3A3] tracking-widest uppercase mb-4 flex items-center">
             <Terminal className="w-4 h-4 mr-2" />
             SYSTEM LOGS
@@ -180,7 +181,8 @@ export function HubView() {
         </div>
 
         {/* World Status */}
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 font-mono">
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-6 font-mono relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#262626]"></div>
           <h3 className="text-xs text-[#A3A3A3] tracking-widest uppercase mb-4 flex items-center">
             <Activity className="w-4 h-4 mr-2" />
             WORLD STATUS
@@ -191,7 +193,7 @@ export function HubView() {
                 <span>GLOBAL THREAT LEVEL</span>
                 <span className="text-yellow-500">MODERATE</span>
               </div>
-              <div className="h-1 bg-[#0A0A0A] rounded-full overflow-hidden">
+              <div className="h-1 bg-[#141414] rounded-sm overflow-hidden">
                 <div className="h-full bg-yellow-500 w-1/3" />
               </div>
             </div>
@@ -200,7 +202,7 @@ export function HubView() {
                 <span>ALLY DENSITY</span>
                 <span className="text-blue-400">HIGH</span>
               </div>
-              <div className="h-1 bg-[#0A0A0A] rounded-full overflow-hidden">
+              <div className="h-1 bg-[#141414] rounded-sm overflow-hidden">
                 <div className="h-full bg-blue-400 w-3/4" />
               </div>
             </div>
@@ -213,12 +215,13 @@ export function HubView() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.1 }}
-            className="bg-[#0A0A0A] border border-[#262626] rounded-2xl p-6 relative overflow-hidden"
+            className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-6 relative overflow-hidden"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/5 to-transparent rounded-bl-full pointer-events-none" style={{ backgroundImage: `linear-gradient(to bottom left, ${themeColor}10, transparent)` }} />
+            <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#262626]"></div>
+            <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#262626]"></div>
             
-            <h3 className="text-xs font-mono text-white tracking-[0.2em] mb-6 flex items-center">
-              <div className="w-1 h-4 mr-3 rounded-full" style={{ backgroundColor: themeColor }} />
+            <h3 className="text-xs font-mono text-white tracking-[0.2em] mb-6 flex items-center uppercase">
+              <div className="w-1 h-4 mr-3 rounded-sm" style={{ backgroundColor: themeColor }} />
               {cat.title}
             </h3>
             
@@ -228,7 +231,7 @@ export function HubView() {
                   key={item.id}
                   onClick={() => setView(item.id as any)}
                   className={cn(
-                    "group flex items-center justify-between p-4 bg-[#141414] border rounded-xl transition-all duration-300 text-left hover:shadow-lg relative overflow-hidden",
+                    "group flex items-center justify-between p-4 bg-[#141414] border rounded-sm transition-all duration-300 text-left hover:shadow-lg relative overflow-hidden",
                     uiTheme === 'monarch' ? "border-indigo-900/30 hover:border-indigo-500/50" :
                     uiTheme === 's_class' ? "border-purple-900/30 hover:border-purple-500/50" :
                     "border-[#262626] hover:border-[#333]"
@@ -242,7 +245,7 @@ export function HubView() {
                   
                   <div className="flex items-center space-x-4 relative z-10">
                     <div className={cn(
-                      "p-2.5 bg-[#0A0A0A] border rounded-lg group-hover:scale-110 transition-transform duration-300 shadow-inner",
+                      "p-2.5 bg-[#0A0A0A] border rounded-sm group-hover:scale-110 transition-transform duration-300 shadow-inner",
                       uiTheme === 'monarch' ? "border-indigo-900/50 group-hover:border-indigo-500" :
                       uiTheme === 's_class' ? "border-purple-900/50 group-hover:border-purple-500" :
                       "border-[#262626] group-hover:border-[var(--hover-color)]"
@@ -250,7 +253,7 @@ export function HubView() {
                       <item.icon className="w-5 h-5 transition-colors duration-300" style={{ color: themeColor }} />
                     </div>
                     <div>
-                      <div className="text-sm font-mono font-bold text-white group-hover:text-white transition-colors">{item.label}</div>
+                      <div className="text-sm font-mono font-bold text-white group-hover:text-white transition-colors uppercase tracking-widest">{item.label}</div>
                       <div className="text-[10px] font-mono text-[#A3A3A3] uppercase tracking-widest mt-0.5">{item.desc}</div>
                     </div>
                   </div>

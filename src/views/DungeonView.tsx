@@ -168,38 +168,39 @@ export function DungeonView() {
   }
 
   return (
-    <div className="space-y-8">
-      <header className="border-b border-[#262626] pb-6">
-        <h2 className="text-3xl font-mono font-bold tracking-tight text-white">INSTANCES</h2>
-        <p className="text-[#A3A3A3] text-sm mt-1">Dungeon Mode: Time Blocking & Project Management</p>
+    <div className="space-y-8 pb-10">
+      <header className="hidden md:block border-b border-[#262626] pb-6">
+        <h2 className="text-3xl font-mono font-bold tracking-tight text-white uppercase" style={{ color: themeColor }}>INSTANCES</h2>
+        <p className="text-[#A3A3A3] text-sm mt-1 font-mono uppercase tracking-widest">Dungeon Mode: Time Blocking & Project Management</p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <h3 className="text-xl font-mono text-white">ACTIVE DUNGEONS</h3>
+          <h3 className="text-xl font-mono text-white font-bold tracking-widest uppercase">ACTIVE DUNGEONS</h3>
           <div className="grid gap-4">
             {activeDungeons.map(dungeon => (
-              <div key={dungeon.id} className="bg-[#141414] border border-[#262626] rounded-xl p-6">
+              <div key={dungeon.id} className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-6 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#262626]"></div>
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-6 gap-4">
                   <div className="w-full sm:w-auto">
-                    <h4 className="text-xl font-mono font-bold text-white uppercase truncate">{dungeon.title}</h4>
+                    <h4 className="text-xl font-mono font-bold text-white uppercase truncate tracking-widest">{dungeon.title}</h4>
                     <div className="flex flex-wrap gap-3 mt-1">
-                      <span className="text-xs text-red-400 font-mono">BOSS ENTITY</span>
-                      <span className="text-xs text-[#00F0FF] font-mono whitespace-nowrap">+{dungeon.rewardXp ?? 500} XP</span>
-                      <span className="text-xs text-[#FFD700] font-mono whitespace-nowrap">+{dungeon.rewardCredits ?? 500} CR</span>
+                      <span className="text-[10px] text-red-400 font-mono tracking-widest uppercase">BOSS ENTITY</span>
+                      <span className="text-[10px] text-[#00F0FF] font-mono whitespace-nowrap tracking-widest uppercase">+{dungeon.rewardXp ?? 500} XP</span>
+                      <span className="text-[10px] text-[#FFD700] font-mono whitespace-nowrap tracking-widest uppercase">+{dungeon.rewardCredits ?? 500} CR</span>
                     </div>
                   </div>
                   <div className="flex gap-2 self-end sm:self-auto">
                     <button 
                       onClick={() => setActiveDungeonId(dungeon.id!)}
-                      className="bg-red-950/30 text-red-500 hover:bg-red-900/50 px-4 py-2 rounded-md font-mono text-sm flex items-center transition-colors border border-red-900/50"
+                      className="bg-red-950/30 text-red-500 hover:bg-red-900/50 px-4 py-2 rounded-sm font-mono text-[10px] font-bold tracking-widest uppercase flex items-center transition-colors border border-red-900/50"
                       style={{ color: themeColor, borderColor: `${themeColor}80`, backgroundColor: `${themeColor}20` }}
                     >
                       <Play className="w-4 h-4 mr-2" /> ENTER
                     </button>
                     <button 
                       onClick={() => handleDeleteDungeon(dungeon.id!)}
-                      className="text-[#A3A3A3] hover:text-red-500 p-2 rounded-md transition-colors"
+                      className="text-[#A3A3A3] hover:text-red-500 p-2 rounded-sm transition-colors"
                       title="Delete Instance"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -208,11 +209,11 @@ export function DungeonView() {
                 </div>
                 
                 <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-mono text-[#A3A3A3]">
+                  <div className="flex justify-between text-[10px] font-mono text-[#A3A3A3] tracking-widest uppercase">
                     <span>HP</span>
                     <span>{dungeon.currentHealth} / {dungeon.totalHealth}</span>
                   </div>
-                  <div className="w-full h-2 bg-[#0A0A0A] rounded-full overflow-hidden">
+                  <div className="w-full h-1 bg-[#141414] rounded-sm overflow-hidden">
                     <div 
                       className="h-full transition-all duration-500"
                       style={{ width: `${(dungeon.currentHealth / dungeon.totalHealth) * 100}%`, backgroundColor: themeColor }}
@@ -222,21 +223,21 @@ export function DungeonView() {
               </div>
             ))}
             {activeDungeons.length === 0 && (
-              <div className="text-center py-12 border border-dashed border-[#262626] rounded-xl text-[#A3A3A3] font-mono text-sm">
-                No active dungeons. Create one to begin.
+              <div className="text-center py-12 border border-dashed border-[#262626] rounded-sm text-[#A3A3A3] font-mono text-xs tracking-widest uppercase">
+                NO ACTIVE DUNGEONS. CREATE ONE TO BEGIN.
               </div>
             )}
           </div>
 
-          <h3 className="text-xl font-mono text-white pt-8">CLEARED DUNGEONS</h3>
+          <h3 className="text-xl font-mono text-white pt-8 font-bold tracking-widest uppercase">CLEARED DUNGEONS</h3>
           <div className="grid gap-4 opacity-70">
             {clearedDungeons.map(dungeon => (
-              <div key={dungeon.id} className="bg-[#0A0A0A] border border-[#262626] rounded-xl p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 group">
+              <div key={dungeon.id} className="bg-[#141414] border border-[#262626] rounded-sm p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 group">
                 <div className="flex flex-col w-full sm:w-auto">
-                  <span className="font-mono text-sm text-[#A3A3A3] line-through truncate">{dungeon.title}</span>
+                  <span className="font-mono text-xs font-bold tracking-widest uppercase text-[#A3A3A3] line-through truncate">{dungeon.title}</span>
                   <div className="flex flex-wrap gap-2 mt-1">
-                    <span className="text-xs text-[#00F0FF]/50 font-mono whitespace-nowrap">+{dungeon.rewardXp ?? 500} XP</span>
-                    <span className="text-xs text-[#FFD700]/50 font-mono whitespace-nowrap">+{dungeon.rewardCredits ?? 500} CR</span>
+                    <span className="text-[10px] text-[#00F0FF]/50 font-mono whitespace-nowrap tracking-widest uppercase">+{dungeon.rewardXp ?? 500} XP</span>
+                    <span className="text-[10px] text-[#FFD700]/50 font-mono whitespace-nowrap tracking-widest uppercase">+{dungeon.rewardCredits ?? 500} CR</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 self-end sm:self-auto">
@@ -251,12 +252,12 @@ export function DungeonView() {
                           equipped: false
                         });
                       }}
-                      className="text-xs font-mono text-[#00F0FF] hover:text-white border border-[#00F0FF]/30 px-3 py-1 rounded"
+                      className="text-[10px] font-mono font-bold tracking-widest uppercase text-[#00F0FF] hover:text-white border border-[#00F0FF]/30 px-3 py-1 rounded-sm"
                     >
                       EXTRACT SHADOW
                     </button>
                   ) : (
-                    <span className="text-xs font-mono text-purple-400">SHADOW EXTRACTED</span>
+                    <span className="text-[10px] font-mono font-bold tracking-widest uppercase text-purple-400">SHADOW EXTRACTED</span>
                   )}
                   <button 
                     onClick={() => handleDeleteDungeon(dungeon.id!)}
@@ -272,56 +273,57 @@ export function DungeonView() {
         </div>
 
         <div>
-          <form onSubmit={handleAddDungeon} className="bg-[#141414] border border-[#262626] rounded-xl p-6 sticky top-8">
-            <h4 className="text-sm font-mono text-white mb-4">CREATE DUNGEON</h4>
+          <form onSubmit={handleAddDungeon} className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-6 sticky top-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2" style={{ borderColor: themeColor }}></div>
+            <h4 className="text-sm font-mono text-white mb-4 font-bold tracking-widest uppercase">CREATE DUNGEON</h4>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-mono text-[#A3A3A3] mb-1">PROJECT NAME</label>
+                <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">PROJECT NAME</label>
                 <input 
                   type="text" 
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                  className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-3 text-white font-mono text-xs tracking-wider focus:outline-none focus:ring-1 transition-colors uppercase placeholder:text-[#555]"
                   style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
-                  placeholder="e.g., Q3 Marketing Plan"
+                  placeholder="E.G., Q3 MARKETING PLAN"
                 />
               </div>
               <div>
-                <label className="block text-xs font-mono text-[#A3A3A3] mb-1">TOTAL HP (EST. EFFORT)</label>
+                <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">TOTAL HP (EST. EFFORT)</label>
                 <input 
                   type="number" 
                   value={newHealth}
                   onChange={(e) => setNewHealth(parseInt(e.target.value) || 100)}
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                  className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-3 text-white font-mono text-xs tracking-wider focus:outline-none focus:ring-1 transition-colors"
                   style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                   min="10"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono text-[#A3A3A3] mb-1">REWARD (CREDITS)</label>
+                  <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">REWARD (CREDITS)</label>
                   <input 
                     type="number" 
                     value={newRewardCredits}
                     onChange={(e) => setNewRewardCredits(parseInt(e.target.value) || 0)}
-                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                    className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-3 text-white font-mono text-xs tracking-wider focus:outline-none focus:ring-1 transition-colors"
                     style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                     min="0"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-[#A3A3A3] mb-1">REWARD (XP)</label>
+                  <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">REWARD (XP)</label>
                   <input 
                     type="number" 
                     value={newRewardXp}
                     onChange={(e) => setNewRewardXp(parseInt(e.target.value) || 0)}
-                    className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-4 py-2 text-white font-mono text-sm focus:outline-none focus:ring-1 transition-colors"
+                    className="w-full bg-[#141414] border border-[#262626] rounded-sm px-4 py-3 text-white font-mono text-xs tracking-wider focus:outline-none focus:ring-1 transition-colors"
                     style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                     min="0"
                   />
                 </div>
               </div>
-              <button type="submit" className="w-full bg-[#262626] hover:bg-[#333] text-white px-4 py-3 rounded-md font-mono text-sm transition-colors flex items-center justify-center mt-4">
+              <button type="submit" className="w-full bg-[#141414] border border-[#262626] hover:bg-[#1A1A1A] text-white px-4 py-3 rounded-sm font-mono text-xs font-bold tracking-widest uppercase transition-colors flex items-center justify-center mt-4">
                 <Plus className="w-4 h-4 mr-2" /> INITIALIZE
               </button>
             </div>

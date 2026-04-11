@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp } from '../db/db';
-import { Target, TrendingUp, Activity, Plus, Trash2, BrainCircuit, BarChart3 } from 'lucide-react';
+import { Target, TrendingUp, Activity, Plus, Trash2, BrainCircuit, BarChart3, Trophy } from 'lucide-react';
 import { cn, getRank } from '../lib/utils';
 import { format, subDays } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
+import { toast } from 'sonner';
 
 export function MissionAnalyticsView() {
   const userStats = useLiveQuery(() => db.userStats.get(1));
@@ -86,9 +87,19 @@ export function MissionAnalyticsView() {
         INT: userStats.INT + (category === 'study' ? 2 : 1),
         SEN: userStats.SEN + (nl < 30 ? 2 : 1)
       });
-      await addXp(cr);
+      const xpGain = cr * 10 + 500;
+      await addXp(xpGain); // Generous XP to make leveling easy
+      toast.success(`Mission Success! +${xpGain} XP gained.`, {
+        icon: <Trophy className="w-4 h-4 text-yellow-400" />,
+        duration: 3000,
+      });
     } else if (result === 'partial') {
-      await addXp(Math.floor(cr / 2));
+      const xpGain = Math.floor(cr / 2) * 10 + 250;
+      await addXp(xpGain);
+      toast.success(`Mission Partial! +${xpGain} XP gained.`, {
+        icon: <Trophy className="w-4 h-4 text-yellow-400" />,
+        duration: 3000,
+      });
     }
 
     setTitle('');
@@ -146,97 +157,101 @@ export function MissionAnalyticsView() {
   ].filter(d => d.value > 0);
 
   return (
-    <div className="space-y-8">
-      <header className="border-b border-[#262626] pb-6">
-        <h2 className="text-3xl font-mono font-bold tracking-tight text-white flex items-center">
-          <BrainCircuit className="w-8 h-8 mr-3" style={{ color: themeColor }} />
+    <div className="space-y-8 pb-10">
+      <header className="hidden md:block border-b border-[#262626] pb-6">
+        <h2 className="text-3xl font-mono font-bold tracking-tight text-white flex items-center uppercase" style={{ color: themeColor }}>
           MISSION ANALYTICS
         </h2>
-        <p className="text-[#A3A3A3] text-sm mt-1">Track study/goal completion, success rates, and environmental noise levels.</p>
+        <p className="text-[#A3A3A3] text-sm mt-1 font-mono uppercase tracking-widest">Track study/goal completion, success rates, and environmental noise levels.</p>
       </header>
 
       {/* Analytics Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 relative overflow-hidden">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-mono text-[#A3A3A3]">TOTAL MISSIONS</span>
-            <Target className="w-4 h-4" style={{ color: themeColor }} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-3 md:p-4 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#262626]"></div>
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[9px] md:text-[10px] font-mono text-[#A3A3A3] tracking-widest uppercase">TOTAL MISSIONS</span>
+            <Target className="w-3 h-3 md:w-4 md:h-4" style={{ color: themeColor }} />
           </div>
-          <div className="text-4xl font-mono text-white">{totalMissions}</div>
+          <div className="text-2xl md:text-3xl font-mono text-white">{totalMissions}</div>
         </div>
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 relative overflow-hidden">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-mono text-[#A3A3A3]">AVG COMPLETION</span>
-            <Target className="w-4 h-4" style={{ color: themeColor }} />
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-3 md:p-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#262626]"></div>
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[9px] md:text-[10px] font-mono text-[#A3A3A3] tracking-widest uppercase">AVG COMPLETION</span>
+            <Target className="w-3 h-3 md:w-4 md:h-4" style={{ color: themeColor }} />
           </div>
-          <div className="text-4xl font-mono text-white">{Math.round(avgCompletion)}<span className="text-sm text-[#A3A3A3]">%</span></div>
+          <div className="text-2xl md:text-3xl font-mono text-white">{Math.round(avgCompletion)}<span className="text-xs text-[#A3A3A3]">%</span></div>
         </div>
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 relative overflow-hidden">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-mono text-[#A3A3A3]">RECENT SUCCESS RATE</span>
-            <TrendingUp className="w-4 h-4 text-green-400" />
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-3 md:p-4 relative overflow-hidden">
+          <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#262626]"></div>
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[9px] md:text-[10px] font-mono text-[#A3A3A3] tracking-widest uppercase">SUCCESS RATE</span>
+            <TrendingUp className="w-3 h-3 md:w-4 md:h-4 text-green-400" />
           </div>
-          <div className="text-4xl font-mono text-white">{Math.round(successRate)}<span className="text-sm text-[#A3A3A3]">%</span></div>
+          <div className="text-2xl md:text-3xl font-mono text-white">{Math.round(successRate)}<span className="text-xs text-[#A3A3A3]">%</span></div>
         </div>
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 relative overflow-hidden">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-mono text-[#A3A3A3]">AVG NOISE/FRICTION</span>
-            <Activity className="w-4 h-4 text-red-400" />
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-3 md:p-4 relative overflow-hidden">
+          <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#262626]"></div>
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[9px] md:text-[10px] font-mono text-[#A3A3A3] tracking-widest uppercase">AVG NOISE</span>
+            <Activity className="w-3 h-3 md:w-4 md:h-4 text-red-400" />
           </div>
-          <div className="text-4xl font-mono text-white">{Math.round(avgNoise)}<span className="text-sm text-[#A3A3A3]">%</span></div>
+          <div className="text-2xl md:text-3xl font-mono text-white">{Math.round(avgNoise)}<span className="text-xs text-[#A3A3A3]">%</span></div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Log Form */}
-        <div className="lg:col-span-1 bg-[#141414] border border-[#262626] rounded-xl p-6">
-          <h3 className="text-lg font-mono text-white mb-4">LOG MISSION</h3>
+        <div className="lg:col-span-1 bg-[#0A0A0A] border border-[#262626] rounded-sm p-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2" style={{ borderColor: themeColor }}></div>
+          <h3 className="text-lg font-mono text-white mb-4 tracking-widest uppercase font-bold">LOG MISSION</h3>
           <form onSubmit={handleLogMission} className="space-y-4">
             <div>
-              <label className="block text-xs font-mono text-[#A3A3A3] mb-1">MISSION TITLE</label>
+              <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">MISSION TITLE</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Study React Hooks"
-                className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#404040]"
+                placeholder="E.G. STUDY REACT HOOKS"
+                className="w-full bg-[#141414] border border-[#262626] rounded-sm px-3 py-3 text-white font-mono text-xs focus:outline-none focus:border-[#404040] uppercase placeholder:text-[#555]"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-mono text-[#A3A3A3] mb-1">CATEGORY</label>
+              <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">CATEGORY</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as any)}
-                className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#404040]"
+                className="w-full bg-[#141414] border border-[#262626] rounded-sm px-3 py-3 text-white font-mono text-xs focus:outline-none focus:border-[#404040] uppercase"
               >
-                <option value="study">Study / Learning</option>
-                <option value="work">Work / Project</option>
-                <option value="fitness">Fitness / Health</option>
-                <option value="personal">Personal / Life</option>
+                <option value="study">STUDY / LEARNING</option>
+                <option value="work">WORK / PROJECT</option>
+                <option value="fitness">FITNESS / HEALTH</option>
+                <option value="personal">PERSONAL / LIFE</option>
               </select>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-mono text-[#A3A3A3] mb-1">COMPLETION %</label>
+                <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">COMPLETION %</label>
                 <input
                   type="number"
                   value={completionRate}
                   onChange={(e) => setCompletionRate(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#404040]"
+                  className="w-full bg-[#141414] border border-[#262626] rounded-sm px-3 py-3 text-white font-mono text-xs focus:outline-none focus:border-[#404040]"
                   required
                   min="0"
                   max="100"
                 />
               </div>
               <div>
-                <label className="block text-xs font-mono text-[#A3A3A3] mb-1">NOISE LEVEL %</label>
+                <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">NOISE LEVEL %</label>
                 <input
                   type="number"
                   value={noiseLevel}
                   onChange={(e) => setNoiseLevel(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#404040]"
+                  className="w-full bg-[#141414] border border-[#262626] rounded-sm px-3 py-3 text-white font-mono text-xs focus:outline-none focus:border-[#404040]"
                   required
                   min="0"
                   max="100"
@@ -246,29 +261,29 @@ export function MissionAnalyticsView() {
             </div>
 
             <div>
-              <label className="block text-xs font-mono text-[#A3A3A3] mb-1">RESULT</label>
+              <label className="block text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">RESULT</label>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setResult('success')}
-                  className={cn("flex-1 py-2 rounded-md font-mono text-sm border transition-colors", result === 'success' ? "bg-green-900/30 border-green-500 text-green-400" : "bg-[#0A0A0A] border-[#262626] text-[#A3A3A3] hover:border-[#404040]")}
+                  className={cn("flex-1 py-3 rounded-sm font-mono text-[10px] font-bold tracking-widest border transition-colors", result === 'success' ? "bg-green-900/30 border-green-500 text-green-400" : "bg-[#141414] border-[#262626] text-[#A3A3A3] hover:border-[#404040]")}
                 >SUCCESS</button>
                 <button
                   type="button"
                   onClick={() => setResult('partial')}
-                  className={cn("flex-1 py-2 rounded-md font-mono text-sm border transition-colors", result === 'partial' ? "bg-yellow-900/30 border-yellow-500 text-yellow-400" : "bg-[#0A0A0A] border-[#262626] text-[#A3A3A3] hover:border-[#404040]")}
+                  className={cn("flex-1 py-3 rounded-sm font-mono text-[10px] font-bold tracking-widest border transition-colors", result === 'partial' ? "bg-yellow-900/30 border-yellow-500 text-yellow-400" : "bg-[#141414] border-[#262626] text-[#A3A3A3] hover:border-[#404040]")}
                 >PARTIAL</button>
                 <button
                   type="button"
                   onClick={() => setResult('failure')}
-                  className={cn("flex-1 py-2 rounded-md font-mono text-sm border transition-colors", result === 'failure' ? "bg-red-900/30 border-red-500 text-red-400" : "bg-[#0A0A0A] border-[#262626] text-[#A3A3A3] hover:border-[#404040]")}
+                  className={cn("flex-1 py-3 rounded-sm font-mono text-[10px] font-bold tracking-widest border transition-colors", result === 'failure' ? "bg-red-900/30 border-red-500 text-red-400" : "bg-[#141414] border-[#262626] text-[#A3A3A3] hover:border-[#404040]")}
                 >FAILURE</button>
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full border py-2 rounded-md font-mono text-sm transition-colors flex items-center justify-center mt-4"
+              className="w-full border py-3 rounded-sm font-mono text-xs font-bold tracking-widest transition-colors flex items-center justify-center mt-4"
               style={{ color: themeColor, borderColor: `${themeColor}80`, backgroundColor: `${themeColor}10` }}
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -280,8 +295,9 @@ export function MissionAnalyticsView() {
         {/* Chart & Logs */}
         <div className="lg:col-span-2 space-y-8">
           {/* Performance Chart */}
-          <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
-            <h3 className="text-lg font-mono text-white mb-4 flex items-center">
+          <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2" style={{ borderColor: themeColor }}></div>
+            <h3 className="text-lg font-mono text-white mb-4 flex items-center font-bold tracking-widest uppercase">
               <BarChart3 className="w-5 h-5 mr-2" style={{ color: themeColor }} />
               30-DAY TRENDS
             </h3>
@@ -323,8 +339,9 @@ export function MissionAnalyticsView() {
 
           {/* Distribution Charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
-              <h3 className="text-sm font-mono text-white mb-4">CATEGORY DISTRIBUTION</h3>
+            <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-6 relative overflow-hidden">
+              <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#262626]"></div>
+              <h3 className="text-[10px] font-mono text-[#A3A3A3] mb-4 tracking-widest uppercase">CATEGORY DISTRIBUTION</h3>
               <div className="h-[200px] w-full">
                 {categoryData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
@@ -362,8 +379,9 @@ export function MissionAnalyticsView() {
               </div>
             </div>
 
-            <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
-              <h3 className="text-sm font-mono text-white mb-4">RESULT DISTRIBUTION</h3>
+            <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-6 relative overflow-hidden">
+              <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#262626]"></div>
+              <h3 className="text-[10px] font-mono text-[#A3A3A3] mb-4 tracking-widest uppercase">RESULT DISTRIBUTION</h3>
               <div className="h-[200px] w-full">
                 {resultData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
@@ -403,28 +421,29 @@ export function MissionAnalyticsView() {
           </div>
 
           {/* Recent Logs */}
-          <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
-            <h3 className="text-lg font-mono text-white mb-4">RECENT MISSIONS</h3>
+          <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2" style={{ borderColor: themeColor }}></div>
+            <h3 className="text-lg font-mono text-white mb-4 font-bold tracking-widest uppercase">RECENT MISSIONS</h3>
             <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
               {missionLogs?.length === 0 ? (
                 <div className="text-center text-[#A3A3A3] font-mono text-sm py-4">No recent missions.</div>
               ) : (
                 missionLogs?.map((log) => (
-                  <div key={log.id} className="bg-[#0A0A0A] border border-[#262626] rounded-lg p-3 flex justify-between items-center">
+                  <div key={log.id} className="bg-[#141414] border border-[#262626] rounded-sm p-3 flex justify-between items-center">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className={cn(
-                          "text-xs font-bold px-2 py-0.5 rounded",
+                          "text-[10px] font-bold px-2 py-0.5 rounded-sm tracking-widest",
                           log.result === 'success' ? "bg-green-900/30 text-green-400" :
                           log.result === 'failure' ? "bg-red-900/30 text-red-400" :
                           "bg-yellow-900/30 text-yellow-400"
                         )}>
                           {log.result.toUpperCase()}
                         </span>
-                        <span className="text-sm font-mono text-white truncate max-w-[150px] sm:max-w-[300px]">{log.title}</span>
+                        <span className="text-xs font-mono text-white truncate max-w-[150px] sm:max-w-[300px] uppercase tracking-wider">{log.title}</span>
                       </div>
-                      <div className="text-xs font-mono text-[#A3A3A3]">
-                        {log.completionRate}% Done • {log.noiseLevel}% Noise • {log.category.toUpperCase()} • {format(new Date(log.date), 'MMM dd, HH:mm')}
+                      <div className="text-[10px] font-mono text-[#A3A3A3] tracking-widest uppercase mt-2">
+                        {log.completionRate}% DONE • {log.noiseLevel}% NOISE • {log.category.toUpperCase()} • {format(new Date(log.date), 'MMM dd, HH:mm')}
                       </div>
                     </div>
                     <button

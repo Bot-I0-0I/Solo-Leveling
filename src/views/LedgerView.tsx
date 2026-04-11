@@ -123,29 +123,32 @@ export function LedgerView() {
   const balance = totalIncome - totalExpense;
 
   return (
-    <div className="space-y-6 md:space-y-8">
-      <header className="border-b border-[#262626] pb-4 md:pb-6">
-        <h2 className="text-2xl md:text-3xl font-mono font-bold tracking-tight text-white">TREASURY</h2>
-        <p className="text-[#A3A3A3] text-xs md:text-sm mt-1">Financial Ledger & Resource Allocation</p>
+    <div className="space-y-6 md:space-y-8 pb-10">
+      <header className="hidden md:block border-b border-[#262626] pb-4 md:pb-6">
+        <h2 className="text-2xl md:text-3xl font-mono font-bold tracking-tight text-white uppercase" style={{ color: themeColor }}>TREASURY</h2>
+        <p className="text-[#A3A3A3] text-xs md:text-sm mt-1 font-mono uppercase tracking-widest">Financial Ledger & Resource Allocation</p>
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 md:p-6">
-          <div className="text-[10px] md:text-xs font-mono text-[#A3A3A3] mb-1 md:mb-2">NET BALANCE</div>
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 md:p-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#262626]"></div>
+          <div className="text-[10px] md:text-xs font-mono text-[#A3A3A3] mb-1 md:mb-2 tracking-widest uppercase">NET BALANCE</div>
           <div className={cn("text-2xl md:text-4xl font-mono", balance >= 0 ? "text-white" : "text-red-500")}>
             ${balance.toFixed(2)}
           </div>
         </div>
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 md:p-6">
-          <div className="text-[10px] md:text-xs font-mono text-[#A3A3A3] mb-1 md:mb-2 flex items-center">
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 md:p-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#262626]"></div>
+          <div className="text-[10px] md:text-xs font-mono text-[#A3A3A3] mb-1 md:mb-2 flex items-center tracking-widest uppercase">
             <ArrowUpRight className="w-3 h-3 md:w-4 md:h-4 mr-1 text-green-500" /> TOTAL INFLOW
           </div>
           <div className="text-xl md:text-2xl font-mono text-green-500">
             ${totalIncome.toFixed(2)}
           </div>
         </div>
-        <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 md:p-6">
-          <div className="text-[10px] md:text-xs font-mono text-[#A3A3A3] mb-1 md:mb-2 flex items-center">
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 md:p-6 relative overflow-hidden">
+          <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#262626]"></div>
+          <div className="text-[10px] md:text-xs font-mono text-[#A3A3A3] mb-1 md:mb-2 flex items-center tracking-widest uppercase">
             <ArrowDownRight className="w-3 h-3 md:w-4 md:h-4 mr-1 text-red-500" /> TOTAL OUTFLOW
           </div>
           <div className="text-xl md:text-2xl font-mono text-red-500">
@@ -158,28 +161,29 @@ export function LedgerView() {
         <div className="lg:col-span-2 space-y-6">
           
           {/* Charts Section */}
-          <div className="bg-[#141414] border border-[#262626] rounded-xl p-4 md:p-6">
+          <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 md:p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2" style={{ borderColor: themeColor }}></div>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-              <h3 className="text-sm md:text-base font-mono text-white flex items-center">
+              <h3 className="text-sm md:text-base font-mono text-white flex items-center font-bold tracking-widest uppercase">
                 {chartType === 'pie' ? <PieChartIcon className="w-4 h-4 mr-2" style={{ color: themeColor }} /> : <BarChart3 className="w-4 h-4 mr-2" style={{ color: themeColor }} />}
                 {chartType === 'pie' ? 'EXPENSES BY CATEGORY' : chartType === 'bar' ? '7-DAY CASH FLOW' : '30-DAY BALANCE'}
               </h3>
-              <div className="flex flex-wrap bg-[#0A0A0A] border border-[#262626] rounded-md p-1">
+              <div className="flex flex-wrap bg-[#141414] border border-[#262626] rounded-sm p-1">
                 <button
                   onClick={() => setChartType('pie')}
-                  className={cn("px-3 py-1 text-xs font-mono rounded transition-colors", chartType === 'pie' ? "bg-[#262626] text-white" : "text-[#A3A3A3] hover:text-white")}
+                  className={cn("px-3 py-1 text-xs font-mono rounded-sm transition-colors tracking-widest uppercase", chartType === 'pie' ? "bg-[#262626] text-white" : "text-[#A3A3A3] hover:text-white")}
                 >
                   PIE
                 </button>
                 <button
                   onClick={() => setChartType('bar')}
-                  className={cn("px-3 py-1 text-xs font-mono rounded transition-colors", chartType === 'bar' ? "bg-[#262626] text-white" : "text-[#A3A3A3] hover:text-white")}
+                  className={cn("px-3 py-1 text-xs font-mono rounded-sm transition-colors tracking-widest uppercase", chartType === 'bar' ? "bg-[#262626] text-white" : "text-[#A3A3A3] hover:text-white")}
                 >
                   BAR
                 </button>
                 <button
                   onClick={() => setChartType('line')}
-                  className={cn("px-3 py-1 text-xs font-mono rounded transition-colors", chartType === 'line' ? "bg-[#262626] text-white" : "text-[#A3A3A3] hover:text-white")}
+                  className={cn("px-3 py-1 text-xs font-mono rounded-sm transition-colors tracking-widest uppercase", chartType === 'line' ? "bg-[#262626] text-white" : "text-[#A3A3A3] hover:text-white")}
                 >
                   LINE
                 </button>
@@ -240,31 +244,32 @@ export function LedgerView() {
             </div>
           </div>
 
-          <h3 className="text-lg md:text-xl font-mono text-white flex items-center mt-8">
+          <h3 className="text-lg md:text-xl font-mono text-white flex items-center mt-8 font-bold tracking-widest uppercase">
             <Wallet className="w-5 h-5 mr-2" style={{ color: themeColor }} />
             TRANSACTION LOG
           </h3>
           
-          <div className="bg-[#141414] border border-[#262626] rounded-xl overflow-hidden">
+          <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2" style={{ borderColor: themeColor }}></div>
             {ledger.length > 0 ? (
               <div className="divide-y divide-[#262626]">
                 {ledger.map(entry => (
-                  <div key={entry.id} className="p-3 md:p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-[#1A1A1A] transition-colors gap-3 sm:gap-0">
+                  <div key={entry.id} className="p-3 md:p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-[#141414] transition-colors gap-3 sm:gap-0">
                     <div className="flex items-center gap-3 md:gap-4">
                       <div className={cn(
-                        "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center border flex-shrink-0",
+                        "w-8 h-8 md:w-10 md:h-10 rounded-sm flex items-center justify-center border flex-shrink-0",
                         entry.type === 'income' ? "bg-green-950/30 border-green-900/50 text-green-500" : "bg-red-950/30 border-red-900/50 text-red-500"
                       )}>
                         {entry.type === 'income' ? <ArrowUpRight className="w-4 h-4 md:w-5 md:h-5" /> : <ArrowDownRight className="w-4 h-4 md:w-5 md:h-5" />}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="font-mono text-white text-xs md:text-sm truncate">{entry.description}</h4>
-                        <div className="text-[10px] md:text-xs font-mono text-[#A3A3A3] mt-1 flex flex-wrap items-center gap-1 md:gap-2">
+                        <h4 className="font-mono text-white text-xs md:text-sm truncate uppercase tracking-wider">{entry.description}</h4>
+                        <div className="text-[10px] md:text-xs font-mono text-[#A3A3A3] mt-1 flex flex-wrap items-center gap-1 md:gap-2 tracking-widest uppercase">
                           <span>{entry.date}</span>
                           {entry.category && (
                             <>
                               <span className="hidden sm:inline">•</span>
-                              <span className="bg-[#262626] px-1.5 py-0.5 rounded uppercase truncate max-w-[100px] sm:max-w-none">{entry.category}</span>
+                              <span className="bg-[#141414] border border-[#262626] px-1.5 py-0.5 rounded-sm uppercase truncate max-w-[100px] sm:max-w-none">{entry.category}</span>
                             </>
                           )}
                         </div>
@@ -285,23 +290,24 @@ export function LedgerView() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 text-[#A3A3A3] font-mono text-sm">
-                No transactions recorded.
+              <div className="text-center py-12 text-[#A3A3A3] font-mono text-xs tracking-widest uppercase">
+                NO TRANSACTIONS RECORDED.
               </div>
             )}
           </div>
         </div>
 
         <div className="order-first lg:order-last mb-6 lg:mb-0">
-          <form onSubmit={handleAddEntry} className="bg-[#141414] border border-[#262626] rounded-xl p-4 md:p-6 sticky top-8">
-            <h4 className="text-sm font-mono text-white mb-4">LOG TRANSACTION</h4>
+          <form onSubmit={handleAddEntry} className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-4 md:p-6 sticky top-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2" style={{ borderColor: themeColor }}></div>
+            <h4 className="text-sm font-mono text-white mb-4 font-bold tracking-widest uppercase">LOG TRANSACTION</h4>
             <div className="space-y-4">
-              <div className="flex bg-[#0A0A0A] border border-[#262626] rounded-md p-1">
+              <div className="flex bg-[#141414] border border-[#262626] rounded-sm p-1">
                 <button
                   type="button"
                   onClick={() => handleTypeChange('expense')}
                   className={cn(
-                    "flex-1 py-2 text-xs font-mono rounded transition-colors",
+                    "flex-1 py-2 text-[10px] font-mono rounded-sm transition-colors font-bold tracking-widest uppercase",
                     type === 'expense' ? "bg-red-950/50 text-red-400 border border-red-900/50" : "text-[#A3A3A3] hover:text-white"
                   )}
                 >
@@ -311,7 +317,7 @@ export function LedgerView() {
                   type="button"
                   onClick={() => handleTypeChange('income')}
                   className={cn(
-                    "flex-1 py-2 text-xs font-mono rounded transition-colors",
+                    "flex-1 py-2 text-[10px] font-mono rounded-sm transition-colors font-bold tracking-widest uppercase",
                     type === 'income' ? "bg-green-950/50 text-green-400 border border-green-900/50" : "text-[#A3A3A3] hover:text-white"
                   )}
                 >
@@ -320,56 +326,56 @@ export function LedgerView() {
               </div>
 
               <div>
-                <label className="block text-[10px] md:text-xs font-mono text-[#A3A3A3] mb-1">CATEGORY</label>
+                <label className="block text-[10px] md:text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">CATEGORY</label>
                 <select 
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-3 md:px-4 py-2 text-white font-mono text-xs md:text-sm focus:outline-none focus:ring-1 transition-colors"
+                  className="w-full bg-[#141414] border border-[#262626] rounded-sm px-3 md:px-4 py-3 text-white font-mono text-xs md:text-xs focus:outline-none focus:ring-1 transition-colors uppercase"
                   style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                 >
                   {(type === 'income' ? incomeCategories : expenseCategories).map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
+                    <option key={cat} value={cat}>{cat.toUpperCase()}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-[10px] md:text-xs font-mono text-[#A3A3A3] mb-1">AMOUNT ($)</label>
+                <label className="block text-[10px] md:text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">AMOUNT ($)</label>
                 <input 
                   type="number" 
                   step="0.01"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-3 md:px-4 py-2 text-white font-mono text-xs md:text-sm focus:outline-none focus:ring-1 transition-colors"
+                  className="w-full bg-[#141414] border border-[#262626] rounded-sm px-3 md:px-4 py-3 text-white font-mono text-xs md:text-xs focus:outline-none focus:ring-1 transition-colors"
                   style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                   placeholder="0.00"
                 />
               </div>
               
               <div>
-                <label className="block text-[10px] md:text-xs font-mono text-[#A3A3A3] mb-1">DESCRIPTION</label>
+                <label className="block text-[10px] md:text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">DESCRIPTION</label>
                 <input 
                   type="text" 
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-3 md:px-4 py-2 text-white font-mono text-xs md:text-sm focus:outline-none focus:ring-1 transition-colors"
+                  className="w-full bg-[#141414] border border-[#262626] rounded-sm px-3 md:px-4 py-3 text-white font-mono text-xs md:text-xs focus:outline-none focus:ring-1 transition-colors uppercase placeholder:text-[#555]"
                   style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
-                  placeholder="e.g., Groceries"
+                  placeholder="E.G., GROCERIES"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] md:text-xs font-mono text-[#A3A3A3] mb-1">DATE</label>
+                <label className="block text-[10px] md:text-[10px] font-mono text-[#A3A3A3] mb-1 tracking-widest uppercase">DATE</label>
                 <input 
                   type="date" 
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-[#262626] rounded-md px-3 md:px-4 py-2 text-white font-mono text-xs md:text-sm focus:outline-none focus:ring-1 transition-colors"
+                  className="w-full bg-[#141414] border border-[#262626] rounded-sm px-3 md:px-4 py-3 text-white font-mono text-xs md:text-xs focus:outline-none focus:ring-1 transition-colors uppercase"
                   style={{ '--tw-ring-color': themeColor, outlineColor: themeColor } as any}
                 />
               </div>
               
-              <button type="submit" className="w-full border px-4 py-2 md:py-3 rounded-md font-mono text-xs md:text-sm transition-colors flex items-center justify-center mt-4" style={{ color: themeColor, borderColor: `${themeColor}80`, backgroundColor: `${themeColor}10` }}>
+              <button type="submit" className="w-full border px-4 py-3 rounded-sm font-mono text-[10px] font-bold tracking-widest uppercase transition-colors flex items-center justify-center mt-4" style={{ color: themeColor, borderColor: `${themeColor}80`, backgroundColor: `${themeColor}10` }}>
                 <Plus className="w-4 h-4 mr-2" /> ADD RECORD
               </button>
             </div>

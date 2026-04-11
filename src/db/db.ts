@@ -8,6 +8,13 @@ export interface UserStats {
   AGI: number;
   INT: number;
   SEN: number;
+  chestXp?: number;
+  backXp?: number;
+  legsXp?: number;
+  armsXp?: number;
+  shouldersXp?: number;
+  coreXp?: number;
+  cardioXp?: number;
   credits: number;
   xp: number;
   lastResetDate: string;
@@ -30,7 +37,7 @@ export interface UserStats {
 export interface Quest {
   id?: number;
   title: string;
-  attribute: 'STR' | 'VIT' | 'AGI' | 'INT' | 'SEN';
+  attribute: string;
   targetValue: number;
   currentValue: number;
   type: 'daily';

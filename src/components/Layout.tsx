@@ -2,7 +2,7 @@ import React from 'react';
 import { useStore } from '../store/useStore';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { Activity, Crosshair, Shield, ShoppingCart, Swords, EyeOff, Eye, BookOpen, CalendarDays, Wallet, Settings, User, Flame, LogIn, LogOut, LayoutGrid, Menu, X, BrainCircuit } from 'lucide-react';
+import { Activity, Crosshair, Shield, ShoppingCart, Swords, EyeOff, Eye, BookOpen, CalendarDays, Wallet, Settings, User, Flame, LogIn, LogOut, LayoutGrid, Menu, X, BrainCircuit, Rocket, Package, Plus } from 'lucide-react';
 import { cn, getRank } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../AuthContext';
@@ -37,17 +37,33 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const themeClasses: Record<string, string> = {
     default: 'border-transparent',
-    s_class: 'border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.1)]',
-    monarch: 'border-indigo-500/50 shadow-[0_0_30px_rgba(99,102,241,0.2)] bg-[#05050A]',
+    s_class: 'border-purple-500/50 shadow-[inset_0_0_50px_rgba(168,85,247,0.15)] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#1a0b2e] via-[#0A0A0A] to-[#0A0A0A]',
+    monarch: 'border-indigo-500/60 shadow-[inset_0_0_80px_rgba(99,102,241,0.2)] bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] bg-[#05050A]',
   };
 
   const mobileNavItems = [
-    { id: 'status', icon: Activity, label: 'Status' },
-    { id: 'tactical', icon: BrainCircuit, label: 'Mission Analytics' },
-    { id: 'hub', icon: LayoutGrid, label: 'Hub' },
-    { id: 'nutrition', icon: Flame, label: 'Metabolism' },
-    { id: 'settings', icon: Settings, label: 'Settings' },
+    { id: 'status', icon: LayoutGrid, label: 'STATUS' },
+    { id: 'nutrition', icon: Flame, label: 'METABOLISM' },
+    { id: 'hub', icon: Package, label: 'HUB' },
+    { id: 'tactical', icon: Rocket, label: 'GOALS' },
+    { id: 'ledger', icon: Wallet, label: 'FINANCES' },
   ] as const;
+
+  const viewTitles: Record<string, { title: string, subtitle: string }> = {
+    status: { title: 'STATUS WINDOW', subtitle: 'Identity Dashboard & Attribute Matrix' },
+    quests: { title: 'DAILY QUESTS', subtitle: 'Task Execution & Rewards' },
+    hub: { title: 'SYSTEM HUB', subtitle: 'Central Control Node' },
+    scheduler: { title: 'DIRECTIVES', subtitle: 'Schedule & Routines' },
+    dungeons: { title: 'INSTANCES', subtitle: 'Combat & Challenges' },
+    tactical: { title: 'GOALS', subtitle: 'Tactical Review' },
+    nutrition: { title: 'METABOLISM', subtitle: 'Fuel & Recovery' },
+    store: { title: 'SYSTEM STORE', subtitle: 'Resource Exchange' },
+    ledger: { title: 'TREASURY', subtitle: 'Financial Ledger' },
+    reviews: { title: 'WEEKLY REVIEW', subtitle: 'Performance Analysis' },
+    settings: { title: 'SYSTEM SETTINGS', subtitle: 'Configuration' },
+  };
+
+  const currentTitleInfo = viewTitles[currentView] || { title: 'SYSTEM', subtitle: 'Active Module' };
 
   return (
     <div className={cn(
@@ -57,7 +73,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
     )}>
       {userStats?.backgroundImage && (
         <div 
-          className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-20 pointer-events-none" 
+          className={cn(
+            "absolute inset-0 z-0 bg-cover bg-center bg-no-repeat pointer-events-none transition-opacity duration-500",
+            isCloaked ? "opacity-60" : "opacity-10"
+          )} 
           style={{ backgroundImage: `url(${userStats.backgroundImage})` }}
         />
       )}
@@ -65,21 +84,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar (Desktop) */}
       <nav className={cn(
         "hidden md:flex md:flex-col md:w-64 border-r border-[#262626] bg-[#0A0A0A]/90 backdrop-blur-md z-50 p-4 overflow-y-auto custom-scrollbar space-y-2 transition-colors duration-500 relative",
-        uiTheme === 'monarch' && "bg-[#05050A]/90 border-indigo-500/30 shadow-[10px_0_30px_-15px_rgba(99,102,241,0.3)]",
+        uiTheme === 'monarch' && "bg-[#05050A]/90 border-indigo-500/50 shadow-[10px_0_50px_-15px_rgba(99,102,241,0.4)]",
         uiTheme === 'national' && "border-cyan-500/20",
         uiTheme === 'sss' && "border-purple-500/20",
         uiTheme === 'ss' && "border-red-500/20",
         uiTheme === 's_plus' && "border-yellow-400/30",
-        uiTheme === 's_class' && "border-purple-500/30 shadow-[10px_0_30px_-15px_rgba(168,85,247,0.2)]",
+        uiTheme === 's_class' && "border-purple-500/50 shadow-[10px_0_40px_-15px_rgba(168,85,247,0.3)]",
         uiTheme === 'elite' && "border-blue-500/20",
         isPenalty && "border-red-900/50 bg-[#1A0505]/90"
       )}>
         <div className="flex flex-col mb-8 px-4 relative">
           {uiTheme === 'monarch' && (
-            <div className="absolute -top-4 -left-4 w-24 h-24 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
+            <>
+              <div className="absolute -top-4 -left-4 w-32 h-32 bg-indigo-500/30 rounded-full blur-3xl pointer-events-none animate-pulse" />
+              <div className="absolute top-10 -right-4 w-20 h-20 bg-blue-500/20 rounded-full blur-2xl pointer-events-none" />
+            </>
           )}
           {uiTheme === 's_class' && (
-            <div className="absolute -top-4 -left-4 w-24 h-24 bg-purple-500/20 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -top-4 -left-4 w-24 h-24 bg-purple-500/30 rounded-full blur-2xl pointer-events-none animate-pulse" />
           )}
           <h1 className={cn(
             "text-2xl font-bold tracking-tighter uppercase font-mono transition-all duration-500 relative z-10",
@@ -184,19 +206,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
               "flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 relative flex-1",
               currentView === item.id
                 ? (isPenalty ? "text-red-400" : "")
-                : "text-[#A3A3A3]"
+                : "text-[#555555] hover:text-[#A3A3A3]"
             )}
             style={currentView === item.id && !isPenalty ? { color: themeColor } : {}}
           >
             <item.icon className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-mono uppercase tracking-tighter">{item.label}</span>
-            {currentView === item.id && (
-              <motion.div 
-                layoutId="activeTab"
-                className="absolute -top-2 w-1 h-1 rounded-full"
-                style={{ backgroundColor: themeColor, boxShadow: `0 0 10px ${themeColor}` }}
-              />
-            )}
+            <span className="text-[10px] font-mono uppercase tracking-widest">{item.label}</span>
           </button>
         ))}
       </nav>
@@ -207,48 +222,40 @@ export function Layout({ children }: { children: React.ReactNode }) {
         isCloaked && "blur-sm transition-all duration-300 hover:blur-none"
       )}>
         {/* Mobile Header */}
-        <div className="md:hidden flex justify-between items-center mb-6 bg-[#141414] p-3 rounded-xl border border-[#262626]">
-          <div className="flex items-center space-x-3">
-            {user && !isGuest ? (
-              <div className="w-10 h-10 rounded-full overflow-hidden border border-[#262626]">
-                {user.photoURL ? (
-                   <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                   <div className="w-full h-full bg-[#262626] flex items-center justify-center"><User className="w-5 h-5 text-[#A3A3A3]" /></div>
-                )}
-              </div>
-            ) : userStats?.avatar ? (
-              <div className="w-10 h-10 rounded-full overflow-hidden border border-[#262626]">
-                <img src={userStats.avatar} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              </div>
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center border border-[#262626]">
-                <User className="w-5 h-5 text-[#A3A3A3]" />
-              </div>
-            )}
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-white font-mono truncate max-w-[120px]">
-                {user && !isGuest ? (user.displayName || 'User') : (userStats?.name || 'Guest')}
-              </span>
-              <span className="text-[10px] text-[#A3A3A3] font-mono">
-                {user && !isGuest ? 'Cloud Synced' : `Lvl ${level}`}
-              </span>
-            </div>
+        <div className="md:hidden flex justify-between items-start mb-6 border-b border-[#262626] pb-4">
+          <div className="flex flex-col">
+            <h1 
+              className="text-xl font-black font-mono tracking-widest uppercase" 
+              style={{ color: themeColor, textShadow: `0 0 10px ${themeColor}40` }}
+            >
+              {currentTitleInfo.title}
+            </h1>
+            <p className="text-[10px] text-[#A3A3A3] font-mono uppercase tracking-wider mt-1">
+              {currentTitleInfo.subtitle}
+            </p>
           </div>
           
           <div className="flex space-x-2 items-center">
-            {user && !isGuest ? (
-              <button onClick={logout} className="p-2 bg-[#262626] hover:bg-[#333] rounded-md flex items-center justify-center transition-colors">
-                <LogOut className="w-4 h-4 text-[#A3A3A3]" />
-              </button>
-            ) : (
-              <button onClick={login} className="p-2 bg-[#262626] hover:bg-[#333] rounded-md flex items-center justify-center transition-colors">
-                <LogIn className="w-4 h-4 text-[#A3A3A3]" />
-              </button>
-            )}
-            <button onClick={toggleCloak} className="p-2 bg-[#262626] hover:bg-[#333] rounded-md flex items-center justify-center transition-colors">
-              {isCloaked ? <EyeOff className="w-4 h-4 text-[#A3A3A3]" /> : <Eye className="w-4 h-4 text-[#A3A3A3]" />}
+            <button onClick={() => setView('settings')} className="p-2 bg-[#141414] hover:bg-[#262626] rounded-sm flex items-center justify-center transition-colors border border-[#262626]">
+              <Settings className="w-4 h-4 text-[#A3A3A3]" />
             </button>
+            {user && !isGuest ? (
+              <div className="w-10 h-10 rounded-sm overflow-hidden border border-[#262626] bg-[#141414]">
+                {user.photoURL ? (
+                   <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                   <div className="w-full h-full flex items-center justify-center"><User className="w-5 h-5 text-[#A3A3A3]" /></div>
+                )}
+              </div>
+            ) : userStats?.avatar ? (
+              <div className="w-10 h-10 rounded-sm overflow-hidden border border-[#262626] bg-[#141414]">
+                <img src={userStats.avatar} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-sm bg-[#141414] flex items-center justify-center border border-[#262626]">
+                <User className="w-5 h-5 text-[#A3A3A3]" />
+              </div>
+            )}
           </div>
         </div>
 
