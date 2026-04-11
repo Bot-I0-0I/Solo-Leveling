@@ -163,10 +163,9 @@ export function StatusView() {
             <span className="text-[10px] font-mono tracking-widest" style={{ color: themeColor }}>TO NEXT LEVEL</span>
           </div>
         </div>
-      </div>
       
         {/* MUSCLE FIGURE */}
-        <div className="col-span-1 bg-[#0A0A0A] border border-[#262626] rounded-sm p-5 relative h-[300px] md:h-auto flex items-center justify-center">
+        <div className="col-span-1 bg-[#0A0A0A] border border-[#262626] rounded-sm p-5 relative min-h-[300px] md:h-auto flex flex-col items-center justify-center">
           <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2" style={{ borderColor: themeColor }}></div>
           <div className="text-[10px] font-mono uppercase tracking-widest text-[#A3A3A3] absolute top-3 left-3">
             MUSCLE DEVELOPMENT
@@ -238,37 +237,38 @@ export function StatusView() {
               <path d="M 70 155 L 75 195 L 60 195 L 57 158 Z" fill={getRank(legsLvl).color} stroke="#141414" strokeWidth="1.5"/>
             </svg>
           </div>
-
-        {/* Clean List Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
-          {[
-            { key: 'chest', label: 'Chest', value: chestLvl, xp: userStats.chestXp || 0 },
-            { key: 'back', label: 'Back', value: backLvl, xp: userStats.backXp || 0 },
-            { key: 'arms', label: 'Arms', value: armsLvl, xp: userStats.armsXp || 0 },
-            { key: 'shoulders', label: 'Shoulders', value: shouldersLvl, xp: userStats.shouldersXp || 0 },
-            { key: 'core', label: 'Core', value: coreLvl, xp: userStats.coreXp || 0 },
-            { key: 'legs', label: 'Legs', value: legsLvl, xp: userStats.legsXp || 0 },
-            { key: 'cardio', label: 'Cardio', value: cardioLvl, xp: userStats.cardioXp || 0 },
-          ].map(attr => (
-            <div key={attr.key} className="flex items-center justify-between bg-[#111] border border-[#262626] p-3 rounded-sm">
-              <div className="flex items-center gap-3 w-1/3">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getRank(attr.value).color }}></div>
-                <span className="text-xs font-mono text-white uppercase tracking-wider">{attr.label}</span>
-              </div>
-              <div className="flex-1 px-4">
-                <div className="w-full bg-[#262626] h-1 rounded-full overflow-hidden">
-                  <div className="h-full transition-all duration-500" style={{ width: `${attr.xp % 100}%`, backgroundColor: getRank(attr.value).color }}></div>
-                </div>
-              </div>
-              <div className="w-1/4 text-right">
-                <span className="text-xs font-mono font-bold" style={{ color: getRank(attr.value).color }}>LVL {attr.value}</span>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Clean List Stats (Muscle Group Tabs) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
+        {[
+          { key: 'chest', label: 'Chest', value: chestLvl, xp: userStats.chestXp || 0 },
+          { key: 'back', label: 'Back', value: backLvl, xp: userStats.backXp || 0 },
+          { key: 'arms', label: 'Arms', value: armsLvl, xp: userStats.armsXp || 0 },
+          { key: 'shoulders', label: 'Shoulders', value: shouldersLvl, xp: userStats.shouldersXp || 0 },
+          { key: 'core', label: 'Core', value: coreLvl, xp: userStats.coreXp || 0 },
+          { key: 'legs', label: 'Legs', value: legsLvl, xp: userStats.legsXp || 0 },
+          { key: 'cardio', label: 'Cardio', value: cardioLvl, xp: userStats.cardioXp || 0 },
+        ].map(attr => (
+          <div key={attr.key} className="flex items-center justify-between bg-[#111] border border-[#262626] p-3 rounded-sm">
+            <div className="flex items-center gap-3 w-1/3">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getRank(attr.value).color }}></div>
+              <span className="text-xs font-mono text-white uppercase tracking-wider">{attr.label}</span>
+            </div>
+            <div className="flex-1 px-4">
+              <div className="w-full bg-[#262626] h-1 rounded-full overflow-hidden">
+                <div className="h-full transition-all duration-500" style={{ width: `${attr.xp % 100}%`, backgroundColor: getRank(attr.value).color }}></div>
+              </div>
+            </div>
+            <div className="w-1/4 text-right">
+              <span className="text-xs font-mono font-bold" style={{ color: getRank(attr.value).color }}>LVL {attr.value}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         {/* SCRATCHPAD */}
         <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-5 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2" style={{ borderColor: themeColor }}></div>
