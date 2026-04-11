@@ -238,7 +238,6 @@ export function StatusView() {
               <path d="M 70 155 L 75 195 L 60 195 L 57 158 Z" fill={getRank(legsLvl).color} stroke="#141414" strokeWidth="1.5"/>
             </svg>
           </div>
-        </div>
 
         {/* Clean List Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
