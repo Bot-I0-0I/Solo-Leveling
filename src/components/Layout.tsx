@@ -236,6 +236,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
           
           <div className="flex space-x-2 items-center">
+            {user && !isGuest ? (
+              <button onClick={logout} className="p-2 bg-[#141414] hover:bg-red-900/20 hover:text-red-400 rounded-sm flex items-center justify-center transition-colors border border-[#262626]" title="Cloud Logout">
+                <LogOut className="w-4 h-4 text-[#A3A3A3]" />
+              </button>
+            ) : (
+              <button onClick={login} className="p-2 bg-[#141414] hover:bg-[#262626] rounded-sm flex items-center justify-center transition-colors border border-[#262626]" title="Cloud Login">
+                <LogIn className="w-4 h-4 text-[#A3A3A3]" />
+              </button>
+            )}
             <button onClick={() => setView('settings')} className="p-2 bg-[#141414] hover:bg-[#262626] rounded-sm flex items-center justify-center transition-colors border border-[#262626]">
               <Settings className="w-4 h-4 text-[#A3A3A3]" />
             </button>

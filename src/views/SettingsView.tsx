@@ -155,6 +155,7 @@ export function SettingsView() {
 
   const handleReset = async () => {
     if (resetText === 'RESET') {
+      localStorage.setItem('system_reset_pending', 'true');
       await db.delete();
       window.location.reload();
     }

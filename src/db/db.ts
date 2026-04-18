@@ -32,6 +32,9 @@ export interface UserStats {
   useRankTheme?: boolean;
   selectedColor?: string;
   uid?: string;
+  currentStreak?: number;
+  longestStreak?: number;
+  lastCheckInDate?: string;
 }
 
 export interface Quest {
@@ -327,7 +330,7 @@ db.on('populate', async () => {
   ]);
 });
 
-export async function addXp(amount: number, attribute?: 'STR' | 'VIT' | 'AGI' | 'INT' | 'SEN') {
+export async function addXp(amount: number, attribute?: string) {
   const stats = await db.userStats.get(1);
   if (!stats) return;
 
@@ -339,9 +342,15 @@ export async function addXp(amount: number, attribute?: 'STR' | 'VIT' | 'AGI' | 
   const updates: Partial<UserStats> = { xp: newXp };
   
   if (attribute) {
-    // Add 10% of the XP gained directly to the specific attribute
-    const attributeGain = Math.max(1, Math.floor(amount / 10));
-    updates[attribute] = (stats[attribute] || 0) + attributeGain;
+    const attr = attribute.toUpperCase();
+    if (['STR', 'VIT', 'AGI', 'INT', 'SEN'].includes(attr)) {
+      const key = attr as 'STR' | 'VIT' | 'AGI' | 'INT' | 'SEN';
+      updates[key] = (stats[key] || 0) + Math.max(1, Math.floor(amount / 10));
+    } else {
+      // Handle muscle groups (e.g., 'chest' -> 'chestXp')
+      const muscleKey = `${attribute.toLowerCase()}Xp` as keyof UserStats;
+      (updates as any)[muscleKey] = ((stats as any)[muscleKey] || 0) + amount;
+    }
   }
 
   if (levelsGained > 0) {
@@ -363,4 +372,47 @@ export async function addXp(amount: number, attribute?: 'STR' | 'VIT' | 'AGI' | 
   }
 
   await db.userStats.update(1, updates);
+  await updateStreak(); // Update streak when user gets XP!
 }
+
+export async function updateStreak() {
+  const stats = await db.userStats.get(1);
+  if (!stats) return;
+
+  const today = new Date().toISOString().split('T')[0];
+  
+  if (stats.lastCheckInDate === today) {
+    // Already checked in today
+    return;
+  }
+
+  let currentStreak = stats.currentStreak || 0;
+  let longestStreak = stats.longestStreak || 0;
+  
+  if (stats.lastCheckInDate) {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    
+    if (stats.lastCheckInDate === yesterdayStr) {
+      // Checked in yesterday, continue streak
+      currentStreak++;
+    } else {
+      // Missed a day or more, reset score
+      currentStreak = 1;
+    }
+  } else {
+    currentStreak = 1; // First check in
+  }
+
+  if (currentStreak > longestStreak) {
+    longestStreak = currentStreak;
+  }
+
+  await db.userStats.update(1, {
+    currentStreak,
+    longestStreak,
+    lastCheckInDate: today
+  });
+}
+

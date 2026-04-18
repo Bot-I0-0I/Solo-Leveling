@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp, Task } from '../db/db';
 import { cn, getRank } from '../lib/utils';
-import { CalendarDays, CheckCircle, Circle, Plus, Clock, Repeat, AlertTriangle } from 'lucide-react';
+import { CalendarDays, CheckCircle, Circle, Plus, Clock, Repeat, AlertTriangle, Flame, Activity } from 'lucide-react';
 import { format, isBefore, startOfDay } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -77,8 +77,8 @@ export function SchedulerView() {
 
   if (!tasks) return <div className="opacity-80">Loading Directives...</div>;
 
-  const upcomingTasks = tasks.filter(t => !t.completed);
-  const completedTasks = tasks.filter(t => t.completed);
+  const upcomingTasks = tasks.filter(t => !t.completed).sort((a, b) => a.time.localeCompare(b.time));
+  const completedTasks = tasks.filter(t => t.completed).sort((a, b) => a.time.localeCompare(b.time));
   const today = startOfDay(new Date());
 
   return (
@@ -88,11 +88,50 @@ export function SchedulerView() {
         <p className="text-[#A3A3A3] text-sm mt-1 font-mono uppercase tracking-widest">Task Scheduler & Agenda</p>
       </header>
 
+      {/* Streak Counter & Consistency Logger */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-5 relative overflow-hidden flex items-center justify-between">
+          <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2" style={{ borderColor: themeColor }}></div>
+          <div>
+            <span className="text-[10px] font-mono tracking-widest uppercase text-[#A3A3A3] flex items-center mb-1">
+              <Flame className="w-3 h-3 mr-1 text-orange-400" />
+              CURRENT STREAK
+            </span>
+            <div className="text-3xl font-black font-mono text-white">
+              {userStats?.currentStreak || 0} <span className="text-sm font-normal text-[#A3A3A3]">DAYS</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="text-[10px] font-mono tracking-widest uppercase text-[#A3A3A3] block mb-1">LONGEST STREAK</span>
+            <div className="text-xl font-bold font-mono text-[#E5E5E5]">{userStats?.longestStreak || 0} DAYS</div>
+          </div>
+        </div>
+        
+        <div className="bg-[#0A0A0A] border border-[#262626] rounded-sm p-5 relative overflow-hidden flex items-center justify-between">
+          <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2" style={{ borderColor: themeColor }}></div>
+          <div>
+            <span className="text-[10px] font-mono tracking-widest uppercase text-[#A3A3A3] flex items-center mb-1">
+              <Activity className="w-3 h-3 mr-1 text-blue-400" />
+              CONSISTENCY LOG
+            </span>
+            <div className="text-3xl font-black font-mono text-white">
+              {completedTasks.length}/{tasks.length} <span className="text-sm font-normal text-[#A3A3A3]">TASKS</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="text-[10px] font-mono tracking-widest uppercase text-[#A3A3A3] block mb-1">COMPLETION RATE</span>
+            <div className="text-xl font-bold font-mono text-[#E5E5E5]">
+              {tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0}%
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <h3 className="text-xl font-mono text-white flex items-center font-bold tracking-widest uppercase">
-            <CalendarDays className="w-5 h-5 mr-2" style={{ color: themeColor }} />
-            PENDING DIRECTIVES
+            <Clock className="w-5 h-5 mr-2" style={{ color: themeColor }} />
+            TIMETABLE & ROUTINE
           </h3>
           
           <div className="grid gap-3">

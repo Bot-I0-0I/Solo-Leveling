@@ -198,7 +198,12 @@ service cloud.firestore {
 
     function isValidUserStats(data) {
       let requiredFields = ['STR', 'VIT', 'AGI', 'INT', 'SEN', 'credits', 'xp', 'lastResetDate', 'uid'];
-      let optionalFields = ['name', 'avatar', 'height', 'age', 'gender', 'notes', 'fitnessGoal', 'activityLevel', 'role', 'uiTheme', 'backgroundImage', 'useRankTheme', 'selectedColor'];
+      let optionalFields = [
+        'name', 'avatar', 'height', 'age', 'gender', 'notes', 'fitnessGoal', 
+        'activityLevel', 'role', 'uiTheme', 'backgroundImage', 'useRankTheme', 
+        'selectedColor', 'chestXp', 'backXp', 'legsXp', 'armsXp', 
+        'shouldersXp', 'coreXp', 'cardioXp'
+      ];
       let allFields = requiredFields.concat(optionalFields);
 
       return hasRequiredFields(requiredFields) &&
@@ -210,21 +215,28 @@ service cloud.firestore {
              data.SEN is number && data.SEN >= 0 &&
              data.credits is number && data.credits >= 0 &&
              data.xp is number && data.xp >= 0 &&
-             validStringLength('lastResetDate', 10, 10) &&
+             validStringLength('lastResetDate', 10, 30) &&
              data.uid == request.auth.uid &&
              isValidOptionalString('name', 0, 100) &&
-             isValidOptionalString('avatar', 0, 1048576) &&
+             isValidOptionalString('avatar', 0, 5000000) &&
              isValidOptionalNumber('height') &&
              isValidOptionalNumber('age') &&
              (!( 'gender' in data ) || data.gender == '' || data.gender in ['male', 'female', 'other']) &&
-             isValidOptionalString('notes', 0, 5000) &&
+             isValidOptionalString('notes', 0, 10000) &&
              (!( 'fitnessGoal' in data ) || data.fitnessGoal == '' || data.fitnessGoal in ['lose', 'maintain', 'build']) &&
              (!( 'activityLevel' in data ) || data.activityLevel == '' || data.activityLevel in ['sedentary', 'light', 'moderate', 'active', 'very_active']) &&
              isValidOptionalString('role', 0, 100) &&
              isValidOptionalString('uiTheme', 0, 100) &&
-             isValidOptionalString('backgroundImage', 0, 1048576) &&
+             isValidOptionalString('backgroundImage', 0, 5000000) &&
              (!( 'useRankTheme' in data ) || data.useRankTheme is bool) &&
-             isValidOptionalString('selectedColor', 0, 50);
+             isValidOptionalString('selectedColor', 0, 50) &&
+             isValidOptionalNumber('chestXp') &&
+             isValidOptionalNumber('backXp') &&
+             isValidOptionalNumber('legsXp') &&
+             isValidOptionalNumber('armsXp') &&
+             isValidOptionalNumber('shouldersXp') &&
+             isValidOptionalNumber('coreXp') &&
+             isValidOptionalNumber('cardioXp');
     }
 
     function isValidQuest(data) {
@@ -235,7 +247,7 @@ service cloud.firestore {
       return hasRequiredFields(requiredFields) &&
              hasOnlyAllowedFields(allFields) &&
              validStringLength('title', 1, 200) &&
-             data.attribute in ['STR', 'VIT', 'AGI', 'INT', 'SEN'] &&
+             data.attribute in ['STR', 'VIT', 'AGI', 'INT', 'SEN', 'chest', 'back', 'legs', 'arms', 'shoulders', 'core', 'cardio'] &&
              data.targetValue is number && data.targetValue >= 0 &&
              data.currentValue is number && data.currentValue >= 0 &&
              data.type == 'daily' &&

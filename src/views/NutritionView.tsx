@@ -519,9 +519,9 @@ export function NutritionView() {
                 <div className="flex items-center gap-1"><div className="w-2 h-2 bg-[#F59E0B] rounded-full"></div> FAT</div>
               </div>
             </div>
-            <div className="h-[250px] w-full min-h-[250px]">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                <BarChart data={weeklyChartData}>
+            <div className="h-[250px] w-full min-h-[250px] mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weeklyChartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
                   <XAxis 
                     dataKey="date" 
@@ -590,9 +590,9 @@ export function NutritionView() {
           <Dumbbell className="w-5 h-5 mr-2" style={{ color: themeColor }} />
           MUSCLE LOAD (7-DAY ESTIMATION)
         </h3>
-        <div className="h-[250px] w-full min-h-[250px]">
-          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-            <BarChart data={muscleChartData} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+        <div className="h-[250px] w-full min-h-[250px] mt-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={muscleChartData} layout="vertical" margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#262626" horizontal={false} />
               <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#A3A3A3', fontSize: 10, fontFamily: 'monospace' }} />
               <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#A3A3A3', fontSize: 10, fontFamily: 'monospace' }} width={80} />

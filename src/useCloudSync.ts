@@ -28,7 +28,21 @@ export function useCloudSync() {
         const userStatsSnap = await getDoc(userStatsRef);
 
         if (!isLocalOwnedByUser) {
-          if (userStatsSnap.exists()) {
+          const wasReset = localStorage.getItem('system_reset_pending');
+          if (wasReset) {
+             await clearCloudData(user.uid);
+             localStorage.removeItem('system_reset_pending');
+             // Dexie's 'populate' will run automatically when localDb is first accessed.
+             // We wait for it to be ready.
+             try {
+               await localDb.open();
+               // Wait a brief moment to ensure populate logic finishes
+               await new Promise(resolve => setTimeout(resolve, 500));
+               await forceSync();
+             } catch (e) {
+               console.error("Delayed sync after reset failed:", e);
+             }
+          } else if (userStatsSnap.exists()) {
             // New device or account switch: pull from cloud
             await pullFromCloud(user.uid);
           } else {
@@ -197,7 +211,7 @@ export function useCloudSync() {
         const items = snap.docs.map(doc => {
           const data = doc.data();
           const { uid: _, ...localData } = data;
-          const idStr = doc.id.split('_')[1];
+          const idStr = doc.id.replace(`${uid}_`, '');
           if (idStr) {
             localData.id = parseInt(idStr, 10);
           }
@@ -230,6 +244,51 @@ export function useCloudSync() {
     } catch (error) {
       console.error("Pull error:", error);
       throw error;
+    }
+  };
+
+  const clearCloudData = async (uid: string) => {
+    try {
+      setIsSyncing(true);
+      const collections = [
+        'quests', 'dungeons', 'inventory', 'shopItems', 'vesselLogs', 
+        'weeklyReviews', 'tasks', 'ledger', 'nutritionLogs', 
+        'tacticalLogs', 'missionLogs'
+      ];
+
+      const chunks: Promise<void>[] = [];
+      let currentBatch = writeBatch(cloudDb);
+      let opCount = 0;
+
+      // Delete User Stats
+      currentBatch.delete(doc(cloudDb, 'userStats', uid));
+      opCount++;
+
+      // Delete other collections
+      for (const collName of collections) {
+        const q = query(collection(cloudDb, collName), where("uid", "==", uid));
+        const snap = await getDocs(q);
+        snap.docs.forEach(d => {
+          currentBatch.delete(d.ref);
+          opCount++;
+          if (opCount >= 400) {
+            chunks.push(currentBatch.commit());
+            currentBatch = writeBatch(cloudDb);
+            opCount = 0;
+          }
+        });
+      }
+
+      if (opCount > 0) {
+        chunks.push(currentBatch.commit());
+      }
+      await Promise.all(chunks);
+      toast.success("Cloud data cleared");
+    } catch (error) {
+      console.error("Clear cloud error:", error);
+      toast.error("Failed to clear cloud data");
+    } finally {
+      setIsSyncing(false);
     }
   };
 
