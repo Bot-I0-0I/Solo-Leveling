@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, addXp } from '../db/db';
 import { cn, getRank } from '../lib/utils';
-import { BookOpen, CheckCircle, Plus, Calendar, Sparkles } from 'lucide-react';
+import { BookOpen, CheckCircle, Plus, Calendar } from 'lucide-react';
 import { format, startOfWeek, subDays, isAfter } from 'date-fns';
-import { generateWeeklyReview } from '../services/aiService';
 import { toast } from 'sonner';
 
 export function ReviewView() {
@@ -26,27 +25,6 @@ export function ReviewView() {
   const level = Math.floor((userStats?.xp || 0) / 1000) + 1;
   const rankColor = getRank(level).color;
   const themeColor = userStats?.selectedColor || rankColor;
-
-  const handleAutoGenerate = async () => {
-    if (!pendingReview) return;
-    setIsGenerating(true);
-    const promise = generateWeeklyReview(pendingReview.weekStartDate);
-    
-    toast.promise(promise, {
-      loading: 'System analyzing neural logs...',
-      success: (data) => {
-        setAccomplishments(data.accomplishments);
-        setChallenges(data.challenges);
-        setIntentions(data.intentions);
-        setIsGenerating(false);
-        return 'Analysis complete. Data imported.';
-      },
-      error: (err) => {
-        setIsGenerating(false);
-        return err.message;
-      }
-    });
-  };
 
   const handleInitializeReview = async () => {
     const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
@@ -107,15 +85,6 @@ export function ReviewView() {
               <BookOpen className="w-5 h-5 mr-2" style={{ color: themeColor }} />
               PENDING CALIBRATION: WEEK OF {pendingReview.weekStartDate}
             </h3>
-            <button
-              onClick={handleAutoGenerate}
-              disabled={isGenerating}
-              className="group relative bg-[#141414] border border-[#262626] hover:border-[#444] text-white px-4 py-2 rounded-sm font-mono text-[10px] font-bold tracking-widest uppercase transition-all flex items-center disabled:opacity-50"
-            >
-              <Sparkles className={cn("w-3 h-3 mr-2 group-hover:text-yellow-400 transition-colors", isGenerating && "animate-pulse color-yellow-400")} />
-              {isGenerating ? 'ANALYZING...' : 'SYSTEM AUTO-GENERATE'}
-              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            </button>
           </div>
           
           <div className="space-y-6">
